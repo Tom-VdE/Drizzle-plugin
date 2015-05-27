@@ -14,7 +14,7 @@
 #include "Drizzle_GUI.h"
 #include "ViewerShell.h"
 
-#include <Qt/qobject.h>
+
 #include <Qt/qaction.h>
 #include <Qt/qgroupbox.h>
 #include <Qt/qradiobutton.h>
@@ -22,7 +22,7 @@
 
 class Drizzle : public QObject, public ViewerShell
 {
-	//Q_OBJECT
+	Q_OBJECT
 public:
    Drizzle();
    virtual ~Drizzle();

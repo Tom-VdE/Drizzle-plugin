@@ -85,7 +85,6 @@ void Drizzle_GUI::init(){
 }
 
 void Drizzle_GUI::closeGUI(){
-	//QMessageBox::critical( NULL, "Drizzle", "Cancelled!", "OK" );
 	this->reject();
 }
 

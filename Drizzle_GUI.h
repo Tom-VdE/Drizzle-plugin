@@ -18,7 +18,7 @@
 
 class Drizzle_GUI : public QDialog
 {
-	//Q_OBJECT
+	Q_OBJECT
 public:
 	Drizzle_GUI(QWidget* Parent, const char* Name);
 	~Drizzle_GUI();
