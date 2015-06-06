@@ -62,8 +62,14 @@ bool Drizzle::getOutputSpecification(PlugInArgList*& pOutArgList)
 
 bool Drizzle::openGUI()
 {
-   StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
-
+	Service<ModelServices> Model;
+	StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
+	std::vector<DataElement*> RasterElements = Model->getElements( "RasterElement" );
+	if ( RasterElements.size() == 0 ){
+		QMessageBox::critical( NULL, "Drizzle", "No RasterElements found!", "Back" );
+		pStep->finalize( Message::Failure, "No RasterElements found!" );
+		return false;
+	}
     gui = new Drizzle_GUI(NULL, "GUI");
 	//connect(gui, SIGNAL( finished() ), this, SLOT( abort()) );
     gui->show();
