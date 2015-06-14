@@ -56,7 +56,9 @@ bool Drizzle::getInputSpecification(PlugInArgList*& pInArgList)
 
 bool Drizzle::getOutputSpecification(PlugInArgList*& pOutArgList)
 {
-   pOutArgList = NULL;
+   pOutArgList = Service<PlugInManagerServices>()->getPlugInArgList();
+   VERIFY(pOutArgList != NULL);
+   pOutArgList->addArg<RasterElement>("Result", NULL);
    return true;
 }
 
@@ -70,7 +72,7 @@ bool Drizzle::openGUI()
 		pStep->finalize( Message::Failure, "No RasterElements found!" );
 		return false;
 	}
-    gui = new Drizzle_GUI(NULL, "GUI");
+	gui = new Drizzle_GUI(NULL, "GUI");
 	//connect(gui, SIGNAL( finished() ), this, SLOT( abort()) );
     gui->show();
 
