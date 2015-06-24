@@ -33,7 +33,10 @@
 #include "GeoreferenceDescriptor.h"
 #include "GeoPoint.h"
 #include "Layerlist.h"
+#include "GcpList.h"
 
+
+#include <Qt/QInputDialog.h>
 #include <Qt/qgridlayout.h>
 #include <Qt/qapplication.h>
 #include <Qt/qmessagebox.h>
@@ -100,14 +103,46 @@ namespace
 		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,0)));
 		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,Des->getRows().size()-1)));
 
-		double tlx1 = geo1.mX;
-		double tly1 = geo1.mY;
-		double trx1 = geo2.mX;
-		double try1 = geo2.mY;
-		double blx1 = geo3.mX;
-		double bly1 = geo3.mY;
-		double brx1 = geo4.mX;
-		double bry1 = geo4.mY;
+		double tlx1 = geo1.mX;			//x coordinate of top left pixel
+		double tly1 = geo1.mY;			//y coordinate of top left pixel
+		double trx1 = geo2.mX;			//x coordinate of top right pixel
+		double try1 = geo2.mY;			//y coordinate of top right pixel
+		double blx1 = geo3.mX;			//x coordinate of bottom left pixel
+		double bly1 = geo3.mY;			//y coordinate of bottom left pixel
+		double brx1 = geo4.mX;			//x coordinate of bottom right pixel
+		double bry1 = geo4.mY;			//y coordinate of bottom right pixel
+
+		double dtx1 = trx1 - tlx1;		//difference in x coordinate over top of image
+		double dty1 = try1 - tly1;		//difference in y coordinate over top of image
+		double dlx1 = blx1 - tly1;		//difference in x coordinate over left side of image
+		double dly1 = bly1 - tly1;		//difference in y coordinate over left side of image
+		double dbx1 = brx1 - blx1;		//difference in x coordinate over bottom of image
+		double dby1 = bry1 - bly1;		//difference in y coordinate over bottom of image
+		double drx1 = brx1 - trx1;		//difference in x coordinate over right of image
+		double dry1 = bry1 - try1;		//difference in y coordinate over right of image
+
+		double dxv = ((dbx1-dtx1)/rowSize)*row + dtx1;	//total difference in x coordinate in vertical direction
+		double dxh = ((drx1-dlx1)/colSize)*col + dlx1;	//total difference in x coorindate in horizontal direction
+		double dyv = ((dby1-dty1)/rowSize)*row + dty1;	//total difference in y coorindate in vertical direction
+		double dyh = ((dry1-dly1)/colSize)*col + dly1;	//total difference in y coorindate in horizontal direction
+
+		//		(ptlx1,ptly1)	o-------------o (ptrx1,ptry1)
+		//						|			  |
+		//						|  one pixel  |
+		//						|			  |
+		//						|			  |
+		//		(pblx1,pbly1)	o-------------o (pbrx1,pbry1)
+
+		double dropsize = 0.7;
+
+		double ptlx1 = 			//top left x coordinate of pixel
+		double ptly1 = 			//top left y coordinate of pixel
+		double ptrx1 = 			//top right x coordinate of pixel
+		double ptry1 = 			//top right y coordinate of pixel
+		double pblx1 = 			//bottom left x coordinate of pixel
+		double pbly1 = 			//bottom left y coordinate of pixel
+		double pbrx1 = 			//bottom right x coordinate of pixel
+		double pbry1 = 			//bottom right y coordinate of pixel
 
 		double gx = -1.0 * upperLeftVal + -2.0 * leftVal + -1.0 * lowerLeftVal + 1.0 * upperRightVal + 2.0 *
 		rightVal + 1.0 * lowerRightVal;
@@ -115,9 +150,9 @@ namespace
 		upVal + 1.0 * upperRightVal;
 		double magnitude = sqrt(gx * gx + gy * gy);
 		}
-		}*/
+		}
 
-		*pData = static_cast<T>(magnitude);
+		*pData = static_cast<T>(magnitude);*/
 	}
 };
 
@@ -301,6 +336,53 @@ bool Drizzle_GUI::PerformDrizzle(){
 	pResultRequest->setWritable(true);
 	DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
 
+	/* GET GCPs OF INPUT IMAGE */
+	GcpList * GCPs = NULL;		//New GCPList
+
+	std::vector<DataElement*> pGcpLists = pModel->getElements(pSrcAcc1->getAssociatedRasterElement(), TypeConverter::toString<GcpList>());		//Get GCPLists of input image
+
+	if (!pGcpLists.empty())
+	{
+		QStringList aoiNames("<none>");
+		for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
+		{
+			aoiNames << QString::fromStdString((*it)->getName());
+		}
+		QString aoi = QInputDialog::getItem(Service<DesktopServices>()->getMainWidget(),
+			"Select a GCP List", "Select a GCP List for processing", aoiNames);
+
+		if (aoi != "<none>")
+		{
+			std::string strAoi = aoi.toStdString();
+			for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
+			{
+				if ((*it)->getName() == strAoi)
+				{
+					GCPs = static_cast<GcpList*>(*it);
+					break;
+				}
+			}
+			if (GCPs == NULL)
+			{
+				std::string msg = "Invalid GCPList.";
+				pProgress->updateProgress(msg, 0, ERRORS);
+				return false;
+			}
+		}
+		else
+		{
+			std::string msg = "A set of GCPs must be specified.";
+			if (pProgress.get() != NULL)
+			{
+				pProgress->updateProgress(msg, 0, ERRORS);
+			}
+			return false;
+		}
+	}
+
+	GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
+	newGCPList->addPoints(GCPs->getSelectedPoints());
+
 	for (unsigned int row = 0; row < pDesc1->getRowCount(); ++row){ 
 		pProgress->updateProgress("Calculating result", row * 100 / pDesc1->getRowCount(), NORMAL);
 		if (!pDestAcc.isValid())
@@ -335,6 +417,8 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 	pView->setPrimaryRasterElement(pResultCube.get());
 	pView->createLayer(RASTER, pResultCube.get());
+   
+	pView->createLayer(GCP_LAYER,newGCPList,"Corner Coordinates");
 
 	pResultCube.release();
 
