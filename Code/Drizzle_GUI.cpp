@@ -380,8 +380,17 @@ bool Drizzle_GUI::PerformDrizzle(){
 		}
 	}
 
+	/*Compensate for increase in resolution of output image */
+	std::list<GcpPoint> pNewGcpList = GCPs->getSelectedPoints();
+
+	for (std::list<GcpPoint>::iterator it = (pNewGcpList.begin()); it != pNewGcpList.end(); ++it)
+	{
+		(*it).mPixel.mX *= (x_out->text().toDouble() / dynamic_cast<const RasterDataDescriptor*>(pSrcAcc1->getAssociatedRasterElement()->getDataDescriptor())->getColumnCount());
+		(*it).mPixel.mY *= (y_out->text().toDouble() / dynamic_cast<const RasterDataDescriptor*>(pSrcAcc1->getAssociatedRasterElement()->getDataDescriptor())->getRowCount());
+	}
+
 	GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
-	newGCPList->addPoints(GCPs->getSelectedPoints());
+	newGCPList->addPoints(pNewGcpList);
 
 	for (unsigned int row = 0; row < pDesc1->getRowCount(); ++row){ 
 		pProgress->updateProgress("Calculating result", row * 100 / pDesc1->getRowCount(), NORMAL);
