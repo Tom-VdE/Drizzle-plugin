@@ -57,20 +57,19 @@ namespace
 	template<typename T>
 	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize)
 	{
-		double pixelvalue=0;
 		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,dynamic_cast<const RasterDataDescriptor*>(pDestAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size()-1)),0);
-		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(dynamic_cast<const RasterDataDescriptor*>(pDestAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size()-1,0)),0);
-		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(dynamic_cast<const RasterDataDescriptor*>(pDestAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size()-1,dynamic_cast<const RasterDataDescriptor*>(pDestAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size()-1)),0);
+		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,rowSize)));
+		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(colSize,0)));
+		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(colSize,rowSize)));
 
-		double dtlx1 = desgeo1.mY;			//x coordinate of top left pixel
-		double dtly1 = desgeo1.mX;			//y coordinate of top left pixel
-		double dtrx1 = desgeo2.mY;			//x coordinate of top right pixel
-		double dtry1 = desgeo2.mX;			//y coordinate of top right pixel
-		double dblx1 = desgeo3.mY;			//x coordinate of bottom left pixel
-		double dbly1 = desgeo3.mX;			//y coordinate of bottom left pixel
-		double dbrx1 = desgeo4.mY;			//x coordinate of bottom right pixel
-		double dbry1 = desgeo4.mX;			//y coordinate of bottom right pixel
+		double dtlx1 = desgeo1.mX;			//x coordinate of top left pixel
+		double dtly1 = desgeo1.mY;			//y coordinate of top left pixel
+		double dblx1 = desgeo2.mX;			//x coordinate of top right pixel
+		double dbly1 = desgeo2.mY;			//y coordinate of top right pixel
+		double dtrx1 = desgeo3.mX;			//x coordinate of bottom left pixel
+		double dtry1 = desgeo3.mY;			//y coordinate of bottom left pixel
+		double dbrx1 = desgeo4.mX;			//x coordinate of bottom right pixel
+		double dbry1 = desgeo4.mY;			//y coordinate of bottom right pixel
 
 		double ddtx1 = dtrx1 - dtlx1;		//difference in x coordinate over top of image
 		double ddty1 = dtry1 - dtly1;		//difference in y coordinate over top of image
@@ -88,12 +87,12 @@ namespace
 
 		double dptlx1 = dtlx1 + ddxv*double(col) + ddxh*double(row);					//top left x coordinate of pixel
 		double dptly1 = dtly1 + ddyv*double(col) + ddyh*double(row);					//top left y coordinate of pixel
-		double dptrx1 = dtlx1 + ddxv*double(col) + ddxh*double(row+1);				//top right x coordinate of pixel
-		double dptry1 = dtly1 + ddyv*double(col) + ddyh*double(row+1);				//top right y coordinate of pixel
-		double dpblx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row);				//bottom left x coordinate of pixel
-		double dpbly1 = dtly1 + ddyv*double(col+1) + ddyh*double(row);				//bottom left y coordinate of pixel
-		double dpbrx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row+1);			//bottom right x coordinate of pixel
-		double dpbry1 = dtly1 + ddyv*double(col+1) + ddyh*double(row+1);			//bottom right y coordinate of pixel*/
+		double dptrx1 = dtlx1 + ddxv*double(col) + ddxh*double(row+1);					//top right x coordinate of pixel
+		double dptry1 = dtly1 + ddyv*double(col) + ddyh*double(row+1);					//top right y coordinate of pixel
+		double dpblx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row);					//bottom left x coordinate of pixel
+		double dpbly1 = dtly1 + ddyv*double(col+1) + ddyh*double(row);					//bottom left y coordinate of pixel
+		double dpbrx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row+1);				//bottom right x coordinate of pixel
+		double dpbry1 = dtly1 + ddyv*double(col+1) + ddyh*double(row+1);				//bottom right y coordinate of pixel*/
 
 		double dptlx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize))*double(col) + ((((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize))*double(row);					//top left x coordinate of pixel
 		double dptly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col) + ((((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize))*double(row);					//top left y coordinate of pixel
@@ -103,29 +102,32 @@ namespace
 		double dpbly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row);				//bottom left y coordinate of pixel
 		double dpbrx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row+1) + ddtx1)/double(colSize))*double(col+1) + ((((ddrx1-ddlx1)/colSize)*double(col+1) + ddlx1)/double(rowSize))*double(row+1);			//bottom right x coordinate of pixel
 		double dpbry1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row+1) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row+1);			//bottom right y coordinate of pixel*/
+
+		unsigned int srcrowSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size();
+		unsigned int srccolSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size();
+
+		unsigned int tlsrccol = (std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mX)-1 > 0) ? std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mX)-1 : 0;
+		unsigned int tlsrcrow = (std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mY)-1 > 0) ? std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mY)-1 : 0;
+		unsigned int trsrccol = (std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mX)-1 > 0) ? std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mX)-1 : 0;
+		unsigned int trsrcrow = (std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mY)-1 > 0) ? std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mY)-1 : 0;
+		unsigned int brsrccol = (std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mX)-1 > 0) ? std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mX)-1 : 0;
+		unsigned int brsrcrow = (std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mY)-1 > 0) ? std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mY)-1 : 0;
+		unsigned int blsrccol = (std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mX)-1 > 0) ? std::ceil(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mX)-1 : 0;
+		unsigned int blsrcrow = (std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mY)-1 > 0) ? std::floor(pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mY)-1 : 0;
 		
-		unsigned int tlsrcrow = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptly1,dptlx1))).mX;
-		unsigned int tlsrccol = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptly1,dptlx1))).mY;
-		unsigned int trsrcrow = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptry1,dptrx1))).mX;
-		unsigned int trsrccol = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptry1,dptrx1))).mY;
-		unsigned int brsrcrow = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbry1,dpbrx1))).mX;
-		unsigned int brsrccol = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbry1,dpbrx1))).mY;
-		unsigned int blsrcrow = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbly1,dpblx1))).mX;
-		unsigned int blsrccol = pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbly1,dpblx1))).mY;
-
 		LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size()-1)));
-		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size()-1,0)));
-		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size()-1,dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size()-1)));
+		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,srcrowSize)));
+		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(srccolSize,0)));
+		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(srccolSize,srcrowSize)));
 
-		double tlx1 = geo1.mY;			//x coordinate of top left pixel
-		double tly1 = geo1.mX;			//y coordinate of top left pixel
-		double trx1 = geo2.mY;			//x coordinate of top right pixel
-		double try1 = geo2.mX;			//y coordinate of top right pixel
-		double blx1 = geo3.mY;			//x coordinate of bottom left pixel
-		double bly1 = geo3.mX;			//y coordinate of bottom left pixel
-		double brx1 = geo4.mY;			//x coordinate of bottom right pixel
-		double bry1 = geo4.mX;			//y coordinate of bottom right pixel
+		double tlx1 = geo1.mX;			//x coordinate of top left pixel
+		double tly1 = geo1.mY;			//y coordinate of top left pixel
+		double blx1 = geo2.mX;			//x coordinate of top right pixel
+		double bly1 = geo2.mY;			//y coordinate of top right pixel
+		double trx1 = geo3.mX;			//x coordinate of bottom left pixel
+		double try1 = geo3.mY;			//y coordinate of bottom left pixel
+		double brx1 = geo4.mX;			//x coordinate of bottom right pixel
+		double bry1 = geo4.mY;			//y coordinate of bottom right pixel
 
 		double dtx1 = trx1 - tlx1;		//difference in x coordinate over top of image
 		double dty1 = try1 - tly1;		//difference in y coordinate over top of image
@@ -136,59 +138,54 @@ namespace
 		double drx1 = brx1 - trx1;		//difference in x coordinate over right of image
 		double dry1 = bry1 - try1;		//difference in y coordinate over right of image
 
-		unsigned int srcrowSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size();
-		unsigned int srccolSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size();
+		for(unsigned int srcrow = std::min(std::min(tlsrcrow,trsrcrow),std::min(blsrcrow,brsrcrow)); srcrow <= std::max(std::max(tlsrcrow,trsrcrow),std::max(blsrcrow,brsrcrow)); srcrow++){
+			for(unsigned int srccol = std::min(std::min(tlsrccol,trsrccol),std::min(blsrccol,brsrccol)); srccol <= std::max(std::max(tlsrccol,trsrccol),std::max(blsrccol,brsrccol)); srccol++){
+				if(srccol < srccolSize && srcrow < srcrowSize){ 
 
-		for(unsigned int srccol = std::min(std::min(tlsrccol,trsrccol),std::min(blsrccol,brsrccol)); srccol <= std::max(std::max(tlsrccol,trsrccol),std::max(blsrccol,brsrccol)); srccol++){
-			for(unsigned int srcrow = std::min(std::min(tlsrcrow,trsrcrow),std::min(blsrcrow,brsrcrow)); srcrow <= std::max(std::max(tlsrcrow,trsrcrow),std::max(blsrcrow,brsrcrow)); srcrow++){
-				/*double dxv = (((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize);	//total difference in x coordinate in vertical direction
-				double dxh = (((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize);	//total difference in x coorindate in horizontal direction
-				double dyv = (((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize);	//total difference in y coorindate in vertical direction
-				double dyh = (((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize);	//total difference in y coorindate in horizontal direction
+					/*double dxv = (((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize);	//total difference in x coordinate in vertical direction
+					double dxh = (((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize);	//total difference in x coorindate in horizontal direction
+					double dyv = (((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize);	//total difference in y coorindate in vertical direction
+					double dyh = (((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize);	//total difference in y coorindate in horizontal direction
 
-				//		(ptlx1,ptly1)	o-------------o (ptrx1,ptry1)
-				//						|			  |
-				//						|  one pixel  |
-				//						|			  |
-				//						|			  |
-				//		(pblx1,pbly1)	o-------------o (pbrx1,pbry1)
+							(ptlx1,ptly1)	o-------------o (ptrx1,ptry1)
+											|			  |
+											|  one pixel  |
+											|			  |
+											|			  |
+							(pblx1,pbly1)	o-------------o (pbrx1,pbry1)
 
-				//double dropsize = 0.7;
+					double ptlx1 = tlx1 + dxv*srccol + dxh*srcrow;					//top left x coordinate of pixel
+					double ptly1 = tly1 + dyv*srccol + dyh*srcrow;					//top left y coordinate of pixel
+					double ptrx1 = tlx1 + dxv*srccol + dxh*(srcrow+1);				//top right x coordinate of pixel
+					double ptry1 = tly1 + dyv*srccol + dyh*(srcrow+1);				//top right y coordinate of pixel
+					double pblx1 = tlx1 + dxv*(srccol+1) + dxh*srcrow;				//bottom left x coordinate of pixel
+					double pbly1 = tly1 + dyv*(srccol+1) + dyh*srcrow;				//bottom left y coordinate of pixel
+					double pbrx1 = tlx1 + dxv*(srccol+1) + dxh*(srcrow+1);			//bottom right x coordinate of pixel
+					double pbry1 = tly1 + dyv*(srccol+1) + dyh*(srcrow+1);			//bottom right y coordinate of pixel*/
 
-				double ptlx1 = tlx1 + dxv*srccol + dxh*srcrow;					//top left x coordinate of pixel
-				double ptly1 = tly1 + dyv*srccol + dyh*srcrow;					//top left y coordinate of pixel
-				double ptrx1 = tlx1 + dxv*srccol + dxh*(srcrow+1);				//top right x coordinate of pixel
-				double ptry1 = tly1 + dyv*srccol + dyh*(srcrow+1);				//top right y coordinate of pixel
-				double pblx1 = tlx1 + dxv*(srccol+1) + dxh*srcrow;				//bottom left x coordinate of pixel
-				double pbly1 = tly1 + dyv*(srccol+1) + dyh*srcrow;				//bottom left y coordinate of pixel
-				double pbrx1 = tlx1 + dxv*(srccol+1) + dxh*(srcrow+1);			//bottom right x coordinate of pixel
-				double pbry1 = tly1 + dyv*(srccol+1) + dyh*(srcrow+1);			//bottom right y coordinate of pixel*/
+					double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow);					//top left x coordinate of pixel
+					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow);					//top left y coordinate of pixel
+					double ptrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow+1);				//top right x coordinate of pixel
+					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow+1);				//top right y coordinate of pixel
+					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow);				//bottom left x coordinate of pixel
+					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow);				//bottom left y coordinate of pixel
+					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow+1);			//bottom right x coordinate of pixel
+					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow+1);			//bottom right y coordinate of pixel*/
 
-				double ptlx1 = dtlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow);					//top left x coordinate of pixel
-				double ptly1 = dtly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow);					//top left y coordinate of pixel
-				double ptrx1 = dtlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow+1);				//top right x coordinate of pixel
-				double ptry1 = dtly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow+1);				//top right y coordinate of pixel
-				double pblx1 = dtlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow);				//bottom left x coordinate of pixel
-				double pbly1 = dtly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow);				//bottom left y coordinate of pixel
-				double pbrx1 = dtlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow+1);			//bottom right x coordinate of pixel
-				double pbry1 = dtly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow+1);			//bottom right y coordinate of pixel*/
-								
-				//CHECK WHETHER INPUT AND OUTPUT PIXEL COULD OVERLAP
-				if((std::max(std::max(pbrx1,pblx1),std::max(ptrx1,ptlx1))>=std::min(std::min(dpbrx1,dpblx1),std::min(dptrx1,dptlx1)))
-					&& (std::min(std::min(pbrx1,pblx1),std::min(ptrx1,ptlx1))<=std::max(std::max(dpbrx1,dpblx1),std::max(dptrx1,dptlx1)))
-					&& (std::max(std::max(pbry1,pbly1),std::max(ptry1,ptly1))>=std::min(std::min(dpbry1,dpbly1),std::min(dptry1,dptly1)))
-					&& (std::min(std::min(pbry1,pbly1),std::min(ptry1,ptly1))<=std::max(std::max(dpbry1,dpbly1),std::max(dptry1,dptly1))))
-				{
-					*pData = static_cast<T>(srcrow);
+					//CHECK WHETHER INPUT AND OUTPUT PIXEL COULD OVERLAP
+					if((std::max(std::max(pbrx1,pblx1),std::max(ptrx1,ptlx1))>=std::min(std::min(dpbrx1,dpblx1),std::min(dptrx1,dptlx1)))
+						&& (std::min(std::min(pbrx1,pblx1),std::min(ptrx1,ptlx1))<=std::max(std::max(dpbrx1,dpblx1),std::max(dptrx1,dptlx1)))
+						&& (std::max(std::max(pbry1,pbly1),std::max(ptry1,ptly1))>=std::min(std::min(dpbry1,dpbly1),std::min(dptry1,dptly1)))
+						&& (std::min(std::min(pbry1,pbly1),std::min(ptry1,ptly1))<=std::max(std::max(dpbry1,dpbly1),std::max(dptry1,dptly1))))
+					{
+						pSrcAcc->toPixel(srcrow, srccol);
+						VERIFYNRV(pSrcAcc.isValid());
+						T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());
+						*pData = static_cast<T>(srcpixel);
+					}
 				}
-				/*pSrcAcc->toPixel(srccol, srcrow);
-				VERIFYNRV(pSrcAcc.isValid());
-				T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());*/
-				//pixelvalue += 1.0;
-				//pixelvalue = area*srcpixel;
 			}
 		}
-		//*pData = static_cast<T>(50);
 	}
 };
 
@@ -274,8 +271,8 @@ void Drizzle_GUI::init(){
 	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
-	Size1->setText("Size:\t"+ QString::number(Rows.size()) + "x" + QString::number(Columns.size()));
-	Size2->setText("Size:\t"+ QString::number(Rows.size()) + "x" + QString::number(Columns.size()));
+	Size1->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+	Size2->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
 }
 
 void Drizzle_GUI::updateInfo1(){
@@ -284,16 +281,16 @@ void Drizzle_GUI::updateInfo1(){
 	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
-	Size1->setText("Size:\t"+ QString::number(Rows.size()) + "x" + QString::number(Columns.size()));
+	Size1->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
 	//Get geo information
 	FactoryResource<DataRequest> pRequest;
 	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ))->getDataAccessor(pRequest.release());
 	LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getRows().size()-1)));
-	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,0)));
-	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,Des->getRows().size()-1)));
-	Geo1->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+") \n" +
-		"\n\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
+	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,0)));
+	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getColumns().size()-1)));
+	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,Des->getColumns().size()-1)));
+	Geo1->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+") \n" +
+		"\n\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
 }
 
 void Drizzle_GUI::updateInfo2(){
@@ -307,11 +304,11 @@ void Drizzle_GUI::updateInfo2(){
 	FactoryResource<DataRequest> pRequest;
 	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL ))->getDataAccessor(pRequest.release());
 	LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getRows().size()-1)));
-	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,0)));
-	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getColumns().size()-1,Des->getRows().size()-1)));
-	Geo2->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+") \n" +
-		"\n\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
+	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,0)));
+	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getColumns().size()-1)));
+	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,Des->getColumns().size()-1)));
+	Geo2->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+") \n" +
+		"\n\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
 }
 
 void Drizzle_GUI::closeGUI(){
@@ -361,7 +358,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 		return false;
 	}
 
-	ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement(image1->getName() + "_Drizzled", x_out->text().toDouble(), y_out->text().toDouble(), pDesc1->getDataType()));
+	ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement(image1->getName() + "_Drizzled", y_out->text().toDouble(), x_out->text().toDouble(), pDesc1->getDataType()));
 
 	if (pResultCube.get() == NULL){
 		std::string msg = "A raster cube could not be created.";
@@ -479,6 +476,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
+
 	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
 		pProgress->updateProgress("Calculating result", row * 100 / pDesc1->getRowCount(), NORMAL);
 		if (!pDestAcc.isValid())
@@ -488,7 +486,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 			pProgress->updateProgress(msg, 0, ERRORS);
 			return false;
 		}
-		
+
 		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
 		{
 			switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount());
