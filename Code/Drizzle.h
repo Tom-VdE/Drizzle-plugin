@@ -27,6 +27,8 @@ public:
    Drizzle();
    virtual ~Drizzle();
 
+   bool serialize(SessionItemSerializer& serializer) const;
+   bool deserialize(SessionItemDeserializer& deserializer);
    virtual bool getInputSpecification(PlugInArgList*& pInArgList);
    virtual bool getOutputSpecification(PlugInArgList*& pOutArgList);
    virtual bool execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList);

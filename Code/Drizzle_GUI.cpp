@@ -480,7 +480,7 @@ void Drizzle_GUI::updateInfo2(){
 	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
-	Size2->setText("Size:\t"+ QString::number(Rows.size()) + "x" + QString::number(Columns.size()));
+	Size2->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
 	//Get geo information
 	FactoryResource<DataRequest> pRequest;
 	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL ))->getDataAccessor(pRequest.release());
@@ -500,6 +500,11 @@ bool Drizzle_GUI::PerformDrizzle(){
 	Service<ModelServices> pModel;
 	StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
 	ProgressResource pProgress("ProgressBar");
+
+	if(Rasterlist1->currentIndex() == Rasterlist2->currentIndex()){
+		pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
+		return false;
+	}
 
 	RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
 	RasterElement *image2 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL ));
@@ -534,8 +539,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 	if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
 	{
-		std::string msg = "No output size specified!";
-		pStep->finalize(Message::Failure, msg);
+		pProgress->updateProgress("No output size specified.", 100, ERRORS);
 		return false;
 	}
 
@@ -687,5 +691,6 @@ bool Drizzle_GUI::PerformDrizzle(){
 	pStep->finalize();
 	pProgress->updateProgress("Done", 100, NORMAL);
 	this->accept();
+	this->finished(1);
 	return true;
 }

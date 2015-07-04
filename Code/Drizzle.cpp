@@ -18,6 +18,7 @@
 #include "DesktopServices.h"
 #include "ModelServices.h"
 #include "Progress.h"
+#include "SessionItemSerializer.h"
 
 
 #include <Qt\qapplication.h>
@@ -73,7 +74,7 @@ bool Drizzle::openGUI()
 		return false;
 	}
 	gui = new Drizzle_GUI(NULL, "GUI");
-	//connect(gui, SIGNAL( finished() ), this, SLOT( abort()) );
+	connect(gui, SIGNAL( finished(int) ), this, SLOT( abort()) );
     gui->show();
 
 	pStep->finalize(Message::Success);
@@ -88,4 +89,14 @@ bool Drizzle::execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList)
 QWidget* Drizzle::getWidget() const
 {
    return gui;
+}
+
+bool Drizzle::serialize(SessionItemSerializer &serializer) const
+{
+   return serializer.serialize(NULL, 0);
+}
+
+bool Drizzle::deserialize(SessionItemDeserializer &deserializer)
+{
+   return openGUI();
 }
