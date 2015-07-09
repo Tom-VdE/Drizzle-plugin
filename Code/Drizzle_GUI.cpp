@@ -55,7 +55,7 @@
 namespace
 {
 	template<typename T>
-	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize)
+	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop)
 	{
 		std::vector<LocationType> ipoints;
 
@@ -184,7 +184,7 @@ namespace
 					double pbrx1 = tlx1 + dxv*(srccol+1) + dxh*(srcrow+1);			//bottom right x coordinate of pixel
 					double pbry1 = tly1 + dyv*(srccol+1) + dyh*(srcrow+1);			//bottom right y coordinate of pixel*/
 
-					double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow);					//top left x coordinate of pixel
+					/*double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow);					//top left x coordinate of pixel
 					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow);					//top left y coordinate of pixel
 					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow+1);				//top right x coordinate of pixel
 					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow+1);				//top right y coordinate of pixel
@@ -192,6 +192,17 @@ namespace
 					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow);				//bottom left y coordinate of pixel
 					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow+1);			//bottom right x coordinate of pixel
 					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow+1);			//bottom right y coordinate of pixel*/
+
+					double ddrop = (1-drop)/2;
+
+					double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);					//top left x coordinate of pixel
+					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);					//top left y coordinate of pixel
+					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right x coordinate of pixel
+					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right y coordinate of pixel
+					double ptrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left x coordinate of pixel
+					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left y coordinate of pixel
+					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right x coordinate of pixel
+					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right y coordinate of pixel
 
 					//CHECK WHETHER INPUT AND OUTPUT PIXEL COULD OVERLAP
 					if((std::max(std::max(pbrx1,pblx1),std::max(ptrx1,ptlx1))>=std::min(std::min(dpbrx1,dpblx1),std::min(dptrx1,dptlx1)))
@@ -214,10 +225,10 @@ namespace
 
 						//Use relative positions wrt source image in stead of geographical positions due to limited resolution of double.
 						std::vector<LocationType> subject;
-						subject.push_back(*(new LocationType(srccol,srcrow)));
-						subject.push_back(*(new LocationType(srccol,srcrow+1)));
-						subject.push_back(*(new LocationType(srccol+1,srcrow+1)));
-						subject.push_back(*(new LocationType(srccol+1,srcrow)));
+						subject.push_back(*(new LocationType(srccol + ddrop,srcrow + ddrop)));
+						subject.push_back(*(new LocationType(srccol + ddrop,srcrow+1 - ddrop)));
+						subject.push_back(*(new LocationType(srccol+1 - ddrop,srcrow+1  - ddrop)));
+						subject.push_back(*(new LocationType(srccol+1 - ddrop,srcrow + ddrop)));
 						std::vector<LocationType> clip;
 						clip.push_back(*(new LocationType(tlsrccol,tlsrcrow)));
 						clip.push_back(*(new LocationType(blsrccol,blsrcrow)));
@@ -373,6 +384,7 @@ void poly_edge_clip(std::vector<LocationType> sub, LocationType x0, LocationType
 Drizzle_GUI::Drizzle_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
 {
 	this->setWindowTitle("Drizzle algorithm");
+	setModal(FALSE);
 
 	/* WIDGETS */
 	Apply = new QPushButton( "applyButton", this );
@@ -381,8 +393,8 @@ Drizzle_GUI::Drizzle_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
 	Cancel = new QPushButton( "cancelButton", this );
 	Cancel->setText("Cancel");
 
-	Image1 = new QLabel("Image 1", this);
-	Image2 = new QLabel("Image 2", this);
+	Image1 = new QLabel("Base image (determines geographical span of output image)", this);
+	Image2 = new QLabel("Additional input images", this);
 
 	Size1 = new QLabel("Size:", this);
 	Size2 = new QLabel("Size:", this);
@@ -390,7 +402,7 @@ Drizzle_GUI::Drizzle_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
 	Geo2 = new QLabel("Coordinates:", this);
 
 	Rasterlist1 = new QComboBox(this);
-	Rasterlist2 = new QComboBox(this);
+	Rasterlist2 = new QListWidget(this);
 
 	x_out_text = new QLabel("Output size (x)");
 	y_out_text = new QLabel("Output size (y)");
@@ -404,14 +416,14 @@ Drizzle_GUI::Drizzle_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
 	QGridLayout* pLayout = new QGridLayout(this);
 
 	pLayout->addWidget( Rasterlist1, 1, 0, 1, 3 );
-	pLayout->addWidget( Rasterlist2, 1, 4, 1, 3 );
+	pLayout->addWidget( Rasterlist2, 1, 4, 4, 3 );
 
 	pLayout->addWidget( Image1, 0, 0, 1, 3);
 	pLayout->addWidget( Image2, 0, 4, 1, 3);
 	pLayout->addWidget( Size1, 2, 0, 1, 3);
-	pLayout->addWidget( Size2, 2, 4, 1, 3);
+	pLayout->addWidget( Size2, 4, 4, 1, 3);
 	pLayout->addWidget( Geo1, 3, 0, 1, 3);
-	pLayout->addWidget( Geo2, 3, 4, 1, 3);
+	pLayout->addWidget( Geo2, 5, 4, 1, 3);
 
 	pLayout->addWidget( x_out_text,4,0);
 	pLayout->addWidget( y_out_text,4,1);
@@ -434,10 +446,10 @@ Drizzle_GUI::~Drizzle_GUI()
 void Drizzle_GUI::init(){
 
 	//Initialize buttons
-	connect(Cancel, SIGNAL(clicked()), this, SLOT(closeGUI()));
+	connect(Cancel, SIGNAL(clicked()), this, SLOT(reject()));
 	connect(Apply, SIGNAL(clicked()), this, SLOT(PerformDrizzle()));
 	connect(Rasterlist1, SIGNAL(currentIndexChanged(int)), this, SLOT(updateInfo1()));
-	connect(Rasterlist2, SIGNAL(currentIndexChanged(int)), this, SLOT(updateInfo2()));
+	connect(Rasterlist2, SIGNAL(currentRowChanged(int)), this, SLOT(updateInfo2()));
 
 	//Get RasterElements
 	Service<ModelServices> Model;
@@ -446,14 +458,24 @@ void Drizzle_GUI::init(){
 	for (unsigned int i = 0; i < RasterElements.size(); i++)
 	{
 		Rasterlist1->insertItem(i, QString::fromStdString(RasterElements[i]));
-		Rasterlist2->insertItem(i, QString::fromStdString(RasterElements[i]));
+		QListWidgetItem *newitem = new QListWidgetItem(QString::fromStdString(RasterElements[i]), Rasterlist2);
+		newitem->setFlags(newitem->flags() | Qt::ItemIsUserCheckable);
+		newitem->setCheckState(Qt::Unchecked);
 	}
-
+	Rasterlist1->setMinimumWidth(Rasterlist1->sizeHint().rwidth());
+	Rasterlist1->setMaximumWidth(Rasterlist1->sizeHint().rwidth());
+	
+	Rasterlist2->setCurrentRow(0);
+	Rasterlist2->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	Rasterlist2->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	Rasterlist2->setFixedSize(Rasterlist2->sizeHintForColumn(0) + 2 * Rasterlist2->frameWidth(), Rasterlist2->sizeHintForRow(0) * Rasterlist2->count() + 2 * Rasterlist2->frameWidth());
+	
 	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
 	Size1->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
-	Size2->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+
+	this->layout()->setSizeConstraint( QLayout::SetFixedSize );
 }
 
 void Drizzle_GUI::updateInfo1(){
@@ -477,13 +499,13 @@ void Drizzle_GUI::updateInfo1(){
 void Drizzle_GUI::updateInfo2(){
 	Service<ModelServices> Model;
 	//Get size information
-	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL)->getDataDescriptor());
+	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist2->currentRow()),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
 	Size2->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
 	//Get geo information
 	FactoryResource<DataRequest> pRequest;
-	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL ))->getDataAccessor(pRequest.release());
+	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist2->currentRow()),"",NULL ))->getDataAccessor(pRequest.release());
 	LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
 	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,0)));
 	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getColumns().size()-1)));
@@ -501,45 +523,75 @@ bool Drizzle_GUI::PerformDrizzle(){
 	StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
 	ProgressResource pProgress("ProgressBar");
 
-	if(Rasterlist1->currentIndex() == Rasterlist2->currentIndex()){
-		pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
-		return false;
+	RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
+	std::vector<RasterElement*> images;
+
+	for (int i=0; i < RasterElements.size();i++){
+		if((Rasterlist2->item(i)->checkState())){
+			if(QString::fromStdString(RasterElements[Rasterlist1->currentIndex()]) == Rasterlist2->item(i)->text()){
+				pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
+				return false;
+			}
+			else{
+				images.push_back(dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(i),"",NULL )));
+			}
+		}
 	}
 
-	RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
-	RasterElement *image2 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist2->currentIndex()),"",NULL ));
-
-	if (image1 == NULL || image2 == NULL)
+	if (image1 == NULL || images.size() == 0)
 	{				
 		pProgress->updateProgress("Image import failed", 100, ERRORS);
 		return false;	
 	}
 	pProgress->updateProgress("Image import succesfull", 0, NORMAL);
 
-	if(!image1->isGeoreferenced() || !image2->isGeoreferenced())
-	{
-		pProgress->updateProgress("Images are not georeferenced", 100, ERRORS);
-		return false;	
-	}
-
 	RasterDataDescriptor* pDesc1 = static_cast<RasterDataDescriptor*>(image1->getDataDescriptor());
-	RasterDataDescriptor* pDesc2 = static_cast<RasterDataDescriptor*>(image2->getDataDescriptor());
 
-	if (pDesc1->getDataType() == INT4SCOMPLEX || pDesc1->getDataType() == FLT8COMPLEX || pDesc2->getDataType() == INT4SCOMPLEX || pDesc2->getDataType() == FLT8COMPLEX)
+	if (pDesc1->getDataType() == INT4SCOMPLEX || pDesc1->getDataType() == FLT8COMPLEX)
 	{
 		std::string msg = "Drizzle cannot be performed on complex types.";
 		pStep->finalize(Message::Failure, msg);
 		return false;
 	}
 
+	std::vector<RasterDataDescriptor*> pDesc;
+
+	for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
+
+		if(!image1->isGeoreferenced() || !(*it)->isGeoreferenced()){
+			pProgress->updateProgress("Images are not georeferenced", 100, ERRORS);
+			return false;	
+		}
+
+		if ((static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == INT4SCOMPLEX || (static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == FLT8COMPLEX){
+			std::string msg = "Drizzle cannot be performed on complex types.";
+			pStep->finalize(Message::Failure, msg);
+			return false;
+		}
+		else{
+			pDesc.push_back(static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()));
+		}
+	}
+
 	FactoryResource<DataRequest> pRequest1;
-	FactoryResource<DataRequest> pRequest2;
+
 	DataAccessor pSrcAcc1 = image1->getDataAccessor(pRequest1.release());
-	DataAccessor pSrcAcc2 = image2->getDataAccessor(pRequest2.release());
+	std::vector<DataAccessor> pSrcAcc;
+	
+	for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
+		FactoryResource<DataRequest> pRequest;
+		pSrcAcc.push_back((*it)->getDataAccessor(pRequest.release()));
+	}
 
 	if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
 	{
 		pProgress->updateProgress("No output size specified.", 100, ERRORS);
+		return false;
+	}
+
+	if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
+	{
+		pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
 		return false;
 	}
 
@@ -614,10 +666,10 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 	pDestDesc->setGeoreferenceDescriptor(pDesc1->getGeoreferenceDescriptor());
 	GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
-	pDestDesc->getGeoreferenceDescriptor()->setLayerName("GEO_RESULT");
+	/*pDestDesc->getGeoreferenceDescriptor()->setLayerName("GEO_RESULT");
 	pDestDesc->getGeoreferenceDescriptor()->setCreateLayer(true);
 	pDestDesc->getGeoreferenceDescriptor()->setDisplayLayer(true);
-	pDestDesc->getGeoreferenceDescriptor()->setSettingAutoGeoreference(true);
+	pDestDesc->getGeoreferenceDescriptor()->setSettingAutoGeoreference(true);*/
 
 	Service<DesktopServices> pDesktop;
 
@@ -662,8 +714,10 @@ bool Drizzle_GUI::PerformDrizzle(){
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
 
+	double drop = dropsize->text().toDouble();
+	//Drizzle image 1 onto destination image.
 	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-		pProgress->updateProgress("Calculating result", row * 100 / pDesc1->getRowCount(), NORMAL);
+		pProgress->updateProgress("Calculating result (image 1)", (row * 100 / pDesc1->getRowCount()) / (images.size()+1), NORMAL);
 		if (!pDestAcc.isValid())
 		{
 			std::string msg = "Unable to access the cube data.";
@@ -674,11 +728,34 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
 		{
-			switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount());
+			switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop);
 			pDestAcc->nextColumn();
 		}
-
 		pDestAcc->nextRow();
+	}
+
+	//Drizzle other images onto destination image.
+	for (int i=0; i<images.size();i++){
+		//Reset destination image to top left pixel.
+		pDestAcc->toPixel(0,0);
+		for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
+			pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+			if (!pDestAcc.isValid())
+			{
+				std::string msg = "Unable to access the cube data.";
+				pStep->finalize(Message::Failure, msg);
+				pProgress->updateProgress(msg, 0, ERRORS);
+				return false;
+			}
+
+			for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
+			{
+				switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop);
+				pDestAcc->nextColumn();
+			}
+
+			pDestAcc->nextRow();
+		}
 	}
 
 	pView->setPrimaryRasterElement(pResultCube.get());

@@ -16,6 +16,7 @@
 #include <Qt/qcombobox.h>
 #include <Qt/qlabel.h>
 #include <Qt/qlineedit.h>
+#include <Qt/qlistwidget.h>
 
 
 class Drizzle_GUI : public QDialog
@@ -41,7 +42,8 @@ private:
 	QPushButton *Apply;
 
 	QComboBox *Rasterlist1;
-	QComboBox *Rasterlist2;
+
+	QListWidget *Rasterlist2;
 
 	QLabel *x_out_text;
 	QLabel *y_out_text;
