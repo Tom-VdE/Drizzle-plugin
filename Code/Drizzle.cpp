@@ -20,10 +20,8 @@
 #include "Progress.h"
 #include "SessionItemSerializer.h"
 
-
 #include <Qt\qapplication.h>
 #include <Qt\qmessagebox.h>
-
 
 REGISTER_PLUGIN_BASIC(ImageEnhancement, Drizzle);
 
@@ -40,7 +38,7 @@ Drizzle::Drizzle() : gui(NULL)
    setSubtype("Image Enhancement");
    setMenuLocation("[Image Enhancement]/Drizzle");
    setAbortSupported(true);
-   destroyAfterExecute(false);
+   allowMultipleInstances(true);
 }
 
 Drizzle::~Drizzle()
@@ -65,16 +63,18 @@ bool Drizzle::getOutputSpecification(PlugInArgList*& pOutArgList)
 
 bool Drizzle::openGUI()
 {
+	Service<DesktopServices> pDesktop;
 	Service<ModelServices> Model;
 	StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
 	std::vector<DataElement*> RasterElements = Model->getElements( "RasterElement" );
+
 	if ( RasterElements.size() == 0 ){
 		QMessageBox::critical( NULL, "Drizzle", "No RasterElements found!", "Back" );
 		pStep->finalize( Message::Failure, "No RasterElements found!" );
 		return false;
 	}
-	gui = new Drizzle_GUI(NULL, "GUI");
-	connect(gui, SIGNAL( finished(int) ), this, SLOT( abort()) );
+	gui = new Drizzle_GUI(pDesktop->getMainWidget(), "GUI");
+	connect(gui, SIGNAL( finsished(int) ), this, SLOT( closeGUI()) );
     gui->show();
 
 	pStep->finalize(Message::Success);
@@ -99,4 +99,9 @@ bool Drizzle::serialize(SessionItemSerializer &serializer) const
 bool Drizzle::deserialize(SessionItemDeserializer &deserializer)
 {
    return openGUI();
+}
+
+void Drizzle::closeGUI()
+{
+   abort();
 }
