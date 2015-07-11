@@ -55,7 +55,7 @@
 namespace
 {
 	template<typename T>
-	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop)
+	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, bool* overlapped)
 	{
 		std::vector<LocationType> ipoints;
 
@@ -288,11 +288,21 @@ namespace
 							VERIFYNRV(pSrcAcc.isValid());
 							T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());
 							*pData += static_cast<T>(area*srcpixel);
+							*overlapped=true;
 						}
 					}
 				}
 			}
 		}
+	}
+};
+
+namespace
+{
+	template<typename T>
+	void Divide(T* pData, int num_overlap_images)
+	{
+		*pData = static_cast<T>(*pData/num_overlap_images);
 	}
 };
 
@@ -714,32 +724,17 @@ bool Drizzle_GUI::PerformDrizzle(){
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
 
+	bool overlapped = false;
+	int num_overlap_images;
 	double drop = dropsize->text().toDouble();
-	//Drizzle image 1 onto destination image.
-	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-		pProgress->updateProgress("Calculating result (image 1)", (row * 100 / pDesc1->getRowCount()) / (images.size()+1), NORMAL);
-		if (!pDestAcc.isValid())
-		{
-			std::string msg = "Unable to access the cube data.";
-			pStep->finalize(Message::Failure, msg);
-			pProgress->updateProgress(msg, 0, ERRORS);
-			return false;
-		}
 
-		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
-		{
-			switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop);
-			pDestAcc->nextColumn();
-		}
-		pDestAcc->nextRow();
-	}
-
-	//Drizzle other images onto destination image.
-	for (int i=0; i<images.size();i++){
+	//Drizzle images onto destination image.
+	
 		//Reset destination image to top left pixel.
 		pDestAcc->toPixel(0,0);
 		for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-			pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+			//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+			pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
 			if (!pDestAcc.isValid())
 			{
 				std::string msg = "Unable to access the cube data.";
@@ -750,13 +745,19 @@ bool Drizzle_GUI::PerformDrizzle(){
 
 			for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
 			{
-				switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop);
+				switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
+				num_overlap_images=1;
+				for (int i=0; i<images.size();i++){
+					overlapped=false;
+					switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
+					if(overlapped) num_overlap_images++;
+				}
+				switchOnEncoding(pDestDesc->getDataType(), Divide, pDestAcc->getColumn(), num_overlap_images);
 				pDestAcc->nextColumn();
 			}
-
 			pDestAcc->nextRow();
 		}
-	}
+	
 
 	pView->setPrimaryRasterElement(pResultCube.get());
 	pView->createLayer(RASTER, pResultCube.get());
