@@ -36,6 +36,7 @@
 #include "GcpList.h"
 #include "PluginResource.h"
 #include "Executable.h"
+#include "Location.h"
 
 #include "AppConfig.h"
 #include "AppVerify.h"
@@ -59,10 +60,15 @@ namespace
 	{
 		std::vector<LocationType> ipoints;
 
-		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,rowSize)));
-		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(colSize,0)));
-		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(colSize,rowSize)));
+		LocationType *tllt = new LocationType(0,0);
+		LocationType *bllt = new LocationType(0,rowSize);
+		LocationType *trlt = new LocationType(colSize,0);
+		LocationType *brlt = new LocationType(colSize,rowSize);
+
+		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tllt);
+		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*bllt);
+		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trlt);
+		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brlt);
 
 		double dtlx1 = desgeo1.mX;			//x coordinate of top left pixel
 		double dtly1 = desgeo1.mY;			//y coordinate of top left pixel
@@ -72,6 +78,11 @@ namespace
 		double dtry1 = desgeo3.mY;			//y coordinate of bottom left pixel
 		double dbrx1 = desgeo4.mX;			//x coordinate of bottom right pixel
 		double dbry1 = desgeo4.mY;			//y coordinate of bottom right pixel
+
+		delete tllt;
+		delete bllt;
+		delete trlt;
+		delete brlt;
 
 		double ddtx1 = dtrx1 - dtlx1;		//difference in x coordinate over top of image
 		double ddty1 = dtry1 - dtly1;		//difference in y coordinate over top of image
@@ -118,19 +129,39 @@ namespace
 		int srcrowSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size();
 		int srccolSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size();
 
-		double tlsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mX : 0;
-		double tlsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptlx1,dptly1))).mY : 0;
-		double trsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mX : 0;
-		double trsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dptrx1,dptry1))).mY : 0;
-		double brsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mX : 0;
-		double brsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpbrx1,dpbry1))).mY : 0;
-		double blsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mX : 0;
-		double blsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*(new LocationType(dpblx1,dpbly1))).mY : 0;
+		LocationType *tlsrclt = new LocationType(dptlx1,dptly1);
+		LocationType *blsrclt = new LocationType(dptrx1,dptry1);
+		LocationType *trsrclt = new LocationType(dpbrx1,dpbry1);
+		LocationType *brsrclt = new LocationType(dpblx1,dpbly1);
 
-		LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,srcrowSize)));
-		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(srccolSize,0)));
-		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(srccolSize,srcrowSize)));
+		double tlsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX : 0;
+		double tlsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY : 0;
+		double trsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX : 0;
+		double trsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY : 0;
+		double brsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX : 0;
+		double brsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY : 0;
+		double blsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX : 0;
+		double blsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY : 0;
+
+		delete tlsrclt;
+		delete blsrclt;
+		delete trsrclt;
+		delete brsrclt;
+
+		tlsrclt = new LocationType(0,0);
+		blsrclt = new LocationType(0,rowSize);
+		trsrclt = new LocationType(colSize,0);
+		brsrclt = new LocationType(colSize,rowSize);
+
+		LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tlsrclt);
+		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*blsrclt);
+		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trsrclt);
+		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brsrclt);
+
+		delete tlsrclt;
+		delete blsrclt;
+		delete trsrclt;
+		delete brsrclt;
 
 		double tlx1 = geo1.mX;			//x coordinate of top left pixel
 		double tly1 = geo1.mY;			//y coordinate of top left pixel
@@ -225,15 +256,28 @@ namespace
 
 						//Use relative positions wrt source image in stead of geographical positions due to limited resolution of double.
 						std::vector<LocationType> subject;
-						subject.push_back(*(new LocationType(srccol + ddrop,srcrow + ddrop)));
-						subject.push_back(*(new LocationType(srccol + ddrop,srcrow+1 - ddrop)));
-						subject.push_back(*(new LocationType(srccol+1 - ddrop,srcrow+1  - ddrop)));
-						subject.push_back(*(new LocationType(srccol+1 - ddrop,srcrow + ddrop)));
+
+						LocationType *tlsubjectlt = new LocationType(srccol + ddrop,srcrow + ddrop);
+						LocationType *blsubjectlt = new LocationType(srccol + ddrop,srcrow+1 - ddrop);
+						LocationType *brsubjectlt = new LocationType(srccol+1 - ddrop,srcrow+1  - ddrop);
+						LocationType *trsubjectlt = new LocationType(srccol+1 - ddrop,srcrow + ddrop);
+
+						subject.push_back(*tlsubjectlt);
+						subject.push_back(*blsubjectlt);
+						subject.push_back(*brsubjectlt);
+						subject.push_back(*trsubjectlt);
+
 						std::vector<LocationType> clip;
-						clip.push_back(*(new LocationType(tlsrccol,tlsrcrow)));
-						clip.push_back(*(new LocationType(blsrccol,blsrcrow)));
-						clip.push_back(*(new LocationType(brsrccol,brsrcrow)));
-						clip.push_back(*(new LocationType(trsrccol,trsrcrow)));
+
+						LocationType *tlcliplt = new LocationType(tlsrccol,tlsrcrow);
+						LocationType *blcliplt = new LocationType(blsrccol,blsrcrow);
+						LocationType *brcliplt = new LocationType(brsrccol,brsrcrow);
+						LocationType *trcliplt = new LocationType(trsrccol,trsrcrow);
+
+						clip.push_back(*tlcliplt);
+						clip.push_back(*blcliplt);
+						clip.push_back(*brcliplt);
+						clip.push_back(*trcliplt);
 						
 						std::vector<LocationType> p1;
 						std::vector<LocationType> tmp;
@@ -253,6 +297,9 @@ namespace
 							}
 							poly_edge_clip(p1, clip[i], clip[i+1], dir, &ipoints);
 						}
+
+						p1.clear();
+						tmp.clear();
 
 						if(ipoints.size() > 0){
 
@@ -281,19 +328,38 @@ namespace
 
 							area = (s1-s2)/2.0;
 
-							//Total area for geographical coordiate:
+							//Total area for geographical coordinate:
 							//double totalarea = (((ptly1*pblx1)+(pbly1*pbrx1)+(pbry1*ptrx1)+(ptry1*ptlx1))-((ptlx1*pbly1)+(pblx1*pbry1)+(pbrx1*ptry1)+(ptrx1*ptly1)))/2;
+
+							//Total area for relative coordinate
+							//double totalarea = (((tlsrcrow*blsrcrow)+(blsrcrow*brsrccol)+(brsrcrow*trsrccol)+(trsrcrow*tlsrccol))-((tlsrccol*blsrcrow)+(blsrccol*brsrcrow)+(brsrccol*trsrcrow)+(trsrccol*tlsrcrow)))/2;
 
 							pSrcAcc->toPixel(srcrow, srccol);
 							VERIFYNRV(pSrcAcc.isValid());
 							T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());
 							*pData += static_cast<T>(area*srcpixel);
 							*overlapped=true;
+
+							delete tlsubjectlt;
+							delete blsubjectlt;
+							delete trsubjectlt;
+							delete brsubjectlt;
+							delete tlcliplt;
+							delete blcliplt;
+							delete trcliplt;
+							delete brcliplt;
+
+							ipoints.clear();
+							clip.clear();
+							subject.clear();
+							//p1.clear();
+							//tmp.clear();
 						}
 					}
 				}
 			}
 		}
+		//ipoints.clear();
 	}
 };
 
@@ -716,11 +782,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 	else
 	{
 		std::string message = "A georeference plug-in is not available to georeference the data set.";
-
-
 		pProgress->updateProgress(message, 0, WARNING);
-
-
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
 
@@ -757,7 +819,11 @@ bool Drizzle_GUI::PerformDrizzle(){
 			}
 			pDestAcc->nextRow();
 		}
-	
+
+	images.clear();
+	pDesc.clear();
+	pSrcAcc.clear();
+	pGcpLists.clear();
 
 	pView->setPrimaryRasterElement(pResultCube.get());
 	pView->createLayer(RASTER, pResultCube.get());
