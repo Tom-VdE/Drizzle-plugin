@@ -18,11 +18,10 @@
 #include "DesktopServices.h"
 #include "ModelServices.h"
 #include "Progress.h"
-
+#include "SessionItemSerializer.h"
 
 #include <Qt\qapplication.h>
 #include <Qt\qmessagebox.h>
-
 
 REGISTER_PLUGIN_BASIC(ImageEnhancement, Drizzle);
 
@@ -39,7 +38,7 @@ Drizzle::Drizzle() : gui(NULL)
    setSubtype("Image Enhancement");
    setMenuLocation("[Image Enhancement]/Drizzle");
    setAbortSupported(true);
-   destroyAfterExecute(false);
+   allowMultipleInstances(true);
 }
 
 Drizzle::~Drizzle()
@@ -56,16 +55,26 @@ bool Drizzle::getInputSpecification(PlugInArgList*& pInArgList)
 
 bool Drizzle::getOutputSpecification(PlugInArgList*& pOutArgList)
 {
-   pOutArgList = NULL;
+   pOutArgList = Service<PlugInManagerServices>()->getPlugInArgList();
+   VERIFY(pOutArgList != NULL);
+   pOutArgList->addArg<RasterElement>("Result", NULL);
    return true;
 }
 
 bool Drizzle::openGUI()
 {
-   StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
+	Service<DesktopServices> pDesktop;
+	Service<ModelServices> Model;
+	StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
+	std::vector<DataElement*> RasterElements = Model->getElements( "RasterElement" );
 
-    gui = new Drizzle_GUI(NULL, "GUI");
-	//connect(gui, SIGNAL( finished() ), this, SLOT( abort()) );
+	if ( RasterElements.size() == 0 ){
+		QMessageBox::critical( NULL, "Drizzle", "No RasterElements found!", "Back" );
+		pStep->finalize( Message::Failure, "No RasterElements found!" );
+		return false;
+	}
+	gui = new Drizzle_GUI(pDesktop->getMainWidget(), "GUI");
+	connect(gui, SIGNAL( finsished(int) ), this, SLOT( closeGUI()) );
     gui->show();
 
 	pStep->finalize(Message::Success);
@@ -80,4 +89,19 @@ bool Drizzle::execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList)
 QWidget* Drizzle::getWidget() const
 {
    return gui;
+}
+
+bool Drizzle::serialize(SessionItemSerializer &serializer) const
+{
+   return serializer.serialize(NULL, 0);
+}
+
+bool Drizzle::deserialize(SessionItemDeserializer &deserializer)
+{
+   return openGUI();
+}
+
+void Drizzle::closeGUI()
+{
+   abort();
 }

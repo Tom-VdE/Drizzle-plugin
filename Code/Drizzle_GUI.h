@@ -14,6 +14,9 @@
 #include <Qt/qpushbutton.h>
 #include <Qt/qmessagebox.h>
 #include <Qt/qcombobox.h>
+#include <Qt/qlabel.h>
+#include <Qt/qlineedit.h>
+#include <Qt/qlistwidget.h>
 
 
 class Drizzle_GUI : public QDialog
@@ -24,12 +27,30 @@ public:
 	~Drizzle_GUI();
 public slots:
 	void closeGUI();
-	void PerformDrizzle();
+	bool PerformDrizzle();
+	void updateInfo1();
+	void updateInfo2();
 private:
+	QLabel *Image1;
+	QLabel *Image2;
+	QLabel *Size1;
+	QLabel *Size2;
+	QLabel *Geo1;
+	QLabel *Geo2;
+
 	QPushButton *Cancel;
 	QPushButton *Apply;
+
 	QComboBox *Rasterlist1;
-	QComboBox *Rasterlist2;
+
+	QListWidget *Rasterlist2;
+
+	QLabel *x_out_text;
+	QLabel *y_out_text;
+	QLabel *dropsize_text;
+	QLineEdit *x_out;
+	QLineEdit *y_out;
+	QLineEdit *dropsize;
 
 	std::vector<std::string> RasterElements;
 

@@ -25,15 +25,21 @@ class Drizzle : public QObject, public ViewerShell
 	Q_OBJECT
 public:
    Drizzle();
-   virtual ~Drizzle();
+   ~Drizzle();
 
-   virtual bool getInputSpecification(PlugInArgList*& pInArgList);
-   virtual bool getOutputSpecification(PlugInArgList*& pOutArgList);
-   virtual bool execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList);
+   bool serialize(SessionItemSerializer& serializer) const;
+   bool deserialize(SessionItemDeserializer& deserializer);
+   bool getInputSpecification(PlugInArgList*& pInArgList);
+   bool getOutputSpecification(PlugInArgList*& pOutArgList);
+   bool execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList);
    QWidget* getWidget() const;
-   bool openGUI();
 
-   Drizzle_GUI* gui;
+public slots:
+	void closeGUI();
+
+private:
+	bool openGUI();
+	Drizzle_GUI* gui;
 };
 
 #endif
