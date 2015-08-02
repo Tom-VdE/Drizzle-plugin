@@ -1,0 +1,96 @@
+/*
+* The information in this file is
+* Copyright(c) 2015, Tom Van den Eynde
+* and is subject to the terms and conditions of the
+* GNU Lesser General Public License Version 2.1
+* The license text is available from
+* http://www.gnu.org/licenses/lgpl.html
+*/
+
+#include "LocationType.h"
+#include "drizzle_helper_functions.h"
+
+LocationType pivot;
+
+// returns -1 if a -> b -> c forms a counter-clockwise turn, +1 for a clockwise turn, 0 if they are collinear
+int drizzle_helper_functions::ccw(LocationType a, LocationType b, LocationType c) {
+	double area = (b.mX - a.mX) * (c.mY - a.mY) - (b.mY - a.mY) * (c.mX - a.mX);
+	if (area > 0)
+		return -1;
+	else if (area < 0)
+		return 1;
+	return 0;
+}
+
+//Returns square of Euclidean distance between two points
+double drizzle_helper_functions::distance(LocationType a, LocationType b)  {
+	double dx = a.mX - b.mX, dy = a.mY - b.mY;
+	return dx * dx + dy * dy;
+}
+
+//Used for sorting points according to polar order w.r.t the pivot
+bool drizzle_helper_functions::POLAR_ORDER(LocationType a, LocationType b)  {
+	int order = ccw(pivot, a, b);
+	if (order == 0)
+		return distance(pivot, a) < distance(pivot, b);
+	return (order == -1);
+}
+
+//Dot product for locationtypes
+inline double drizzle_helper_functions::dotprod(LocationType a, LocationType b){
+	return a.mX*b.mX + a.mY*b.mY;
+}
+
+//Cross product for locationtypes
+inline double drizzle_helper_functions::crossprod(LocationType a, LocationType b){
+	return a.mX*b.mY - a.mY*b.mX;
+}
+
+//Determines whether C lies on the left side of line determined by A->B
+int drizzle_helper_functions::left_of(LocationType a, LocationType b, LocationType c)
+{
+	LocationType tmp1 = b - a;
+	LocationType tmp2 = c - b;
+	double x = tmp1.mX*tmp2.mY - tmp1.mY*tmp2.mX;
+	if(x<0) return -1;
+	if(x>0) return 1;
+	return 0;
+}
+
+int drizzle_helper_functions::line_intersect(LocationType x1, LocationType x2, LocationType y1, LocationType y2, LocationType *result){
+	LocationType dx, dy, d;
+	dx = x2 - x1;
+	dy = y2 - y1;
+	d = x1 - y1;
+	double dyx = crossprod(dy,dx);
+	if(!dyx) return 0;
+	dyx = crossprod(d, dx)/dyx;
+	if(dyx <= 0 || dyx >= 1) return 0;
+	result->mX = y1.mX + dyx * dy.mX;
+	result->mY = y1.mY + dyx * dy.mY;
+	return 1;
+}
+
+void drizzle_helper_functions::poly_edge_clip(std::vector<LocationType> sub, LocationType x0, LocationType x1, int left, std::vector<LocationType>* res)
+{
+	int i, side0, side1;
+	LocationType tmp;
+	LocationType v0 = sub[sub.size()-1], v1;
+	res->clear();
+ 
+	side0 = left_of(x0, x1, v0);
+
+	if (side0 != -left) res->push_back(v0);
+ 
+	for (i = 0; i < sub.size(); i++) {
+		v1 = sub[i];
+		side1 = left_of(x0, x1, v1);
+		if (side0 + side1 == 0 && side0)
+			// last point and current point span the edge
+			if (line_intersect(x0, x1, v0, v1, &tmp)) res->push_back(tmp);
+		if (i == sub.size()-1) break;
+		if (side1 != -left) res->push_back(v1);
+		v0 = v1;
+		side0 = side1;
+	}
+}

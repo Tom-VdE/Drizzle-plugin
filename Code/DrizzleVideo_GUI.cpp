@@ -47,6 +47,8 @@
 #include "PlugInResource.h"
 #include "Progress.h"
 #include "StringUtilities.h"
+#include "drizzle_helper_functions.h"
+
 
 #include <Qt/QInputDialog.h>
 #include <Qt/qgridlayout.h>
@@ -56,7 +58,7 @@
 namespace
 {
 	template<typename T>
-	void Drizzle(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, bool* overlapped)
+	void DrizzleVideo(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, bool* overlapped)
 	{
 		std::vector<LocationType> ipoints;
 
@@ -282,9 +284,9 @@ namespace
 						std::vector<LocationType> p1;
 						std::vector<LocationType> tmp;
 
-						int dir = int(left_of(clip[0], clip[1], clip[2]));
+						int dir = int(drizzle_helper_functions::left_of(clip[0], clip[1], clip[2]));
 						
-						poly_edge_clip(subject, clip[clip.size()-1], clip[0], dir, &ipoints);
+						drizzle_helper_functions::poly_edge_clip(subject, clip[clip.size()-1], clip[0], dir, &ipoints);
 
 						for (int i = 0; i < clip.size()-1; i++) {
 							tmp = ipoints; 
@@ -295,7 +297,7 @@ namespace
 								ipoints.clear();
 								break;
 							}
-							poly_edge_clip(p1, clip[i], clip[i+1], dir, &ipoints);
+							drizzle_helper_functions::poly_edge_clip(p1, clip[i], clip[i+1], dir, &ipoints);
 						}
 
 						p1.clear();
@@ -365,153 +367,58 @@ namespace
 
 namespace
 {
-	template<typename T>
-	void Divide(T* pData, int num_overlap_images)
+template<typename T>
+	void DivideVideo(T* pData, int num_overlap_images)
 	{
 		*pData = static_cast<T>(*pData/num_overlap_images);
 	}
-};
-
-//LocationType pivot;
-//
-//// returns -1 if a -> b -> c forms a counter-clockwise turn, +1 for a clockwise turn, 0 if they are collinear
-//int ccw(LocationType a, LocationType b, LocationType c) {
-//	int area = (b.mX - a.mX) * (c.mY - a.mY) - (b.mY - a.mY) * (c.mX - a.mX);
-//	if (area > 0)
-//		return -1;
-//	else if (area < 0)
-//		return 1;
-//	return 0;
-//}
-//
-////Returns square of Euclidean distance between two points
-//int distance(LocationType a, LocationType b)  {
-//	int dx = a.mX - b.mX, dy = a.mY - b.mY;
-//	return dx * dx + dy * dy;
-//}
-//
-////Used for sorting points according to polar order w.r.t the pivot
-//bool POLAR_ORDER(LocationType a, LocationType b)  {
-//	int order = ccw(pivot, a, b);
-//	if (order == 0)
-//		return distance(pivot, a) < distance(pivot, b);
-//	return (order == -1);
-//}
-//
-////Dot product for locationtypes
-//inline double dotprod(LocationType a, LocationType b){
-//	return a.mX*b.mX + a.mY*b.mY;
-//}
-//
-////Cross product for locationtypes
-//inline double crossprod(LocationType a, LocationType b){
-//	return a.mX*b.mY - a.mY*b.mX;
-//}
-//
-////Determines whether C lies on the left side of line determined by A->B
-//int left_of(LocationType a, LocationType b, LocationType c)
-//{
-//	LocationType tmp1 = b - a;
-//	LocationType tmp2 = c - b;
-//	double x = tmp1.mX*tmp2.mY - tmp1.mY*tmp2.mX;
-//	if(x<0) return -1;
-//	if(x>0) return 1;
-//	return 0;
-//}
-//
-//int line_intersect(LocationType x1, LocationType x2, LocationType y1, LocationType y2, LocationType *result){
-//	LocationType dx, dy, d;
-//	dx = x2 - x1;
-//	dy = y2 - y1;
-//	d = x1 - y1;
-//	double dyx = crossprod(dy,dx);
-//	if(!dyx) return 0;
-//	dyx = crossprod(d, dx)/dyx;
-//	if(dyx <= 0 || dyx >= 1) return 0;
-//	result->mX = y1.mX + dyx * dy.mX;
-//	result->mY = y1.mY + dyx * dy.mY;
-//	return 1;
-//}
-//
-//void poly_edge_clip(std::vector<LocationType> sub, LocationType x0, LocationType x1, int left, std::vector<LocationType>* res)
-//{
-//	int i, side0, side1;
-//	LocationType tmp;
-//	LocationType v0 = sub[sub.size()-1], v1;
-//	res->clear();
-// 
-//	side0 = left_of(x0, x1, v0);
-//
-//	if (side0 != -left) res->push_back(v0);
-// 
-//	for (i = 0; i < sub.size(); i++) {
-//		v1 = sub[i];
-//		side1 = left_of(x0, x1, v1);
-//		if (side0 + side1 == 0 && side0)
-//			// last point and current point span the edge
-//			if (line_intersect(x0, x1, v0, v1, &tmp)) res->push_back(tmp);
-//		if (i == sub.size()-1) break;
-//		if (side1 != -left) res->push_back(v1);
-//		v0 = v1;
-//		side0 = side1;
-//	}
-//}
+}
 
 DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
 {
-	//this->setWindowTitle("Drizzle algorithm");
-	//setModal(FALSE);
+	this->setWindowTitle("Drizzle algorithm");
+	setModal(FALSE);
 
-	///* WIDGETS */
-	//Apply = new QPushButton( "applyButton", this );
-	//Apply->setText("Drizzle!");
+	/* WIDGETS */
+	Apply = new QPushButton( "applyButton", this );
+	Apply->setText("Drizzle!");
 
-	//Cancel = new QPushButton( "cancelButton", this );
-	//Cancel->setText("Cancel");
+	Cancel = new QPushButton( "cancelButton", this );
+	Cancel->setText("Cancel");
 
-	//Image1 = new QLabel("Base image (determines geographical span of output image)", this);
-	//Image2 = new QLabel("Additional input images", this);
+	Video = new QLabel("Select input video", this);
 
-	//Size1 = new QLabel("Size:", this);
-	//Size2 = new QLabel("Size:", this);
-	//Geo1 = new QLabel("Coordinates:", this);
-	//Geo2 = new QLabel("Coordinates:", this);
+	Size = new QLabel("Size:", this);
 
-	//Rasterlist1 = new QComboBox(this);
-	//Rasterlist2 = new QListWidget(this);
+	Rasterlist = new QComboBox(this);
 
-	//x_out_text = new QLabel("Output size (x)");
-	//y_out_text = new QLabel("Output size (y)");
-	//dropsize_text = new QLabel("Dropsize");
-	//x_out = new QLineEdit(this);
-	//y_out = new QLineEdit(this);
-	//dropsize = new QLineEdit(this);
+	x_out_text = new QLabel("Output size (x)");
+	y_out_text = new QLabel("Output size (y)");
+	dropsize_text = new QLabel("Dropsize");
+	x_out = new QLineEdit(this);
+	y_out = new QLineEdit(this);
+	dropsize = new QLineEdit(this);
 
-	///*LAYOUT*/
+	/*LAYOUT*/
 
-	//QGridLayout* pLayout = new QGridLayout(this);
+	QGridLayout* pLayout = new QGridLayout(this);
 
-	//pLayout->addWidget( Rasterlist1, 1, 0, 1, 3 );
-	//pLayout->addWidget( Rasterlist2, 1, 4, 4, 3 );
+	pLayout->addWidget( Rasterlist, 1, 0, 1, 3 );
 
-	//pLayout->addWidget( Image1, 0, 0, 1, 3);
-	//pLayout->addWidget( Image2, 0, 4, 1, 3);
-	//pLayout->addWidget( Size1, 2, 0, 1, 3);
-	//pLayout->addWidget( Size2, 4, 4, 1, 3);
-	//pLayout->addWidget( Geo1, 3, 0, 1, 3);
-	//pLayout->addWidget( Geo2, 5, 4, 1, 3);
+	pLayout->addWidget( Video, 0, 0, 1, 3);
+	pLayout->addWidget( Size, 2, 0, 1, 3);
 
-	//pLayout->addWidget( x_out_text,4,0);
-	//pLayout->addWidget( y_out_text,4,1);
-	//pLayout->addWidget( dropsize_text,4,2);
-	//pLayout->addWidget( x_out,5,0);
-	//pLayout->addWidget( y_out,5,1);
-	//pLayout->addWidget( dropsize,5,2);
+	pLayout->addWidget( x_out_text,4,0);
+	pLayout->addWidget( y_out_text,4,1);
+	pLayout->addWidget( dropsize_text,4,2);
+	pLayout->addWidget( x_out,5,0);
+	pLayout->addWidget( y_out,5,1);
+	pLayout->addWidget( dropsize,5,2);
 
-	//pLayout->addWidget(Cancel, 6, 4,1,3);
-	//pLayout->addWidget(Apply, 6, 0,1,3);
+	pLayout->addWidget(Cancel, 6, 2,1,3);
+	pLayout->addWidget(Apply, 6, 0,1,1);
 
-	//init();
+	init();
 }
 
 DrizzleVideo_GUI::~DrizzleVideo_GUI()
@@ -519,322 +426,286 @@ DrizzleVideo_GUI::~DrizzleVideo_GUI()
 
 }
 
-//void DrizzleVideo_GUI::init(){
-//
-//	//Initialize buttons
-//	connect(Cancel, SIGNAL(clicked()), this, SLOT(reject()));
-//	connect(Apply, SIGNAL(clicked()), this, SLOT(PerformDrizzle()));
-//	connect(Rasterlist1, SIGNAL(currentIndexChanged(int)), this, SLOT(updateInfo1()));
-//	connect(Rasterlist2, SIGNAL(currentRowChanged(int)), this, SLOT(updateInfo2()));
-//
-//	//Get RasterElements
-//	Service<ModelServices> Model;
-//	RasterElements = Model->getElementNames("RasterElement");
-//
-//	for (unsigned int i = 0; i < RasterElements.size(); i++)
-//	{
-//		Rasterlist1->insertItem(i, QString::fromStdString(RasterElements[i]));
-//		QListWidgetItem *newitem = new QListWidgetItem(QString::fromStdString(RasterElements[i]), Rasterlist2);
-//		newitem->setFlags(newitem->flags() | Qt::ItemIsUserCheckable);
-//		newitem->setCheckState(Qt::Unchecked);
-//	}
-//	Rasterlist1->setMinimumWidth(Rasterlist1->sizeHint().rwidth());
-//	Rasterlist1->setMaximumWidth(Rasterlist1->sizeHint().rwidth());
-//	
-//	Rasterlist2->setCurrentRow(0);
-//	Rasterlist2->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-//	Rasterlist2->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-//	Rasterlist2->setFixedSize(Rasterlist2->sizeHintForColumn(0) + 2 * Rasterlist2->frameWidth(), Rasterlist2->sizeHintForRow(0) * Rasterlist2->count() + 2 * Rasterlist2->frameWidth());
-//	
-//	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
-//	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
-//	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
-//	Size1->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
-//
-//	this->layout()->setSizeConstraint( QLayout::SetFixedSize );
-//}
-//
-//void DrizzleVideo_GUI::updateInfo1(){
-//	Service<ModelServices> Model;
-//	//Get size information
-//	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL)->getDataDescriptor());
-//	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
-//	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
-//	Size1->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
-//	//Get geo information
-//	FactoryResource<DataRequest> pRequest;
-//	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ))->getDataAccessor(pRequest.release());
-//	LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-//	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,0)));
-//	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getColumns().size()-1)));
-//	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,Des->getColumns().size()-1)));
-//	Geo1->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+") \n" +
-//		"\n\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
-//}
-//
-//void DrizzleVideo_GUI::updateInfo2(){
-//	Service<ModelServices> Model;
-//	//Get size information
-//	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist2->currentRow()),"",NULL)->getDataDescriptor());
-//	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
-//	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
-//	Size2->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
-//	//Get geo information
-//	FactoryResource<DataRequest> pRequest;
-//	DataAccessor pSrcAcc = dynamic_cast<RasterElement*>(Model->getElement(RasterElements.at(Rasterlist2->currentRow()),"",NULL ))->getDataAccessor(pRequest.release());
-//	LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,0)));
-//	LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,0)));
-//	LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(0,Des->getColumns().size()-1)));
-//	LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*(new LocationType(Des->getRows().size()-1,Des->getColumns().size()-1)));
-//	Geo2->setText("Coordinates:\t(" + QString::number(geo1.mX) + "," + QString::number(geo1.mY) + "," + QString::number(geo1.mZ)+")\t(" + QString::number(geo3.mX) + "," + QString::number(geo3.mY) + "," + QString::number(geo3.mZ)+") \n" +
-//		"\n\t(" + QString::number(geo2.mX) + "," + QString::number(geo2.mY) + "," + QString::number(geo2.mZ)+")\t(" + QString::number(geo4.mX) + "," + QString::number(geo4.mY) + "," + QString::number(geo4.mZ)+")");
-//}
-//
-//void DrizzleVideo_GUI::closeGUI(){
-//	this->reject();
-//}
-//
-//bool DrizzleVideo_GUI::PerformDrizzle(){
-//	Service<ModelServices> pModel;
-//	StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
-//	ProgressResource pProgress("ProgressBar");
-//
-//	RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
-//	std::vector<RasterElement*> images;
-//
-//	for (int i=0; i < RasterElements.size();i++){
-//		if((Rasterlist2->item(i)->checkState())){
-//			if(QString::fromStdString(RasterElements[Rasterlist1->currentIndex()]) == Rasterlist2->item(i)->text()){
-//				pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
-//				return false;
-//			}
-//			else{
-//				images.push_back(dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(i),"",NULL )));
-//			}
-//		}
-//	}
-//
-//	if (image1 == NULL || images.size() == 0)
-//	{				
-//		pProgress->updateProgress("Image import failed", 100, ERRORS);
-//		return false;	
-//	}
-//	pProgress->updateProgress("Image import succesfull", 0, NORMAL);
-//
-//	RasterDataDescriptor* pDesc1 = static_cast<RasterDataDescriptor*>(image1->getDataDescriptor());
-//
-//	if (pDesc1->getDataType() == INT4SCOMPLEX || pDesc1->getDataType() == FLT8COMPLEX)
-//	{
-//		std::string msg = "Drizzle cannot be performed on complex types.";
-//		pStep->finalize(Message::Failure, msg);
-//		return false;
-//	}
-//
-//	std::vector<RasterDataDescriptor*> pDesc;
-//
-//	for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
-//
-//		if(!image1->isGeoreferenced() || !(*it)->isGeoreferenced()){
-//			pProgress->updateProgress("Images are not georeferenced", 100, ERRORS);
-//			return false;	
-//		}
-//
-//		if ((static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == INT4SCOMPLEX || (static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == FLT8COMPLEX){
-//			std::string msg = "Drizzle cannot be performed on complex types.";
-//			pStep->finalize(Message::Failure, msg);
-//			return false;
-//		}
-//		else{
-//			pDesc.push_back(static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()));
-//		}
-//	}
-//
-//	FactoryResource<DataRequest> pRequest1;
-//
-//	DataAccessor pSrcAcc1 = image1->getDataAccessor(pRequest1.release());
-//	std::vector<DataAccessor> pSrcAcc;
-//	
-//	for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
-//		FactoryResource<DataRequest> pRequest;
-//		pSrcAcc.push_back((*it)->getDataAccessor(pRequest.release()));
-//	}
-//
-//	if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
-//	{
-//		pProgress->updateProgress("No output size specified.", 100, ERRORS);
-//		return false;
-//	}
-//
-//	if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
-//	{
-//		pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
-//		return false;
-//	}
-//
-//	ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement(image1->getName() + "_Drizzled", y_out->text().toDouble(), x_out->text().toDouble(), pDesc1->getDataType()));
-//
-//	if (pResultCube.get() == NULL){
-//		std::string msg = "A raster cube could not be created.";
-//		pStep->finalize(Message::Failure, msg);
-//		return false;
-//	}
-//
-//	FactoryResource<DataRequest> pResultRequest;
-//	pResultRequest->setWritable(true);
-//	DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
-//	RasterDataDescriptor* pDestDesc = static_cast<RasterDataDescriptor*>(pResultCube->getDataDescriptor());
-//
-//	/* GET GCPs OF INPUT IMAGE */
-//	GcpList * GCPs = NULL;		//New GCPList
-//
-//	std::vector<DataElement*> pGcpLists = pModel->getElements(pSrcAcc1->getAssociatedRasterElement(), TypeConverter::toString<GcpList>());		//Get GCPLists of input image
-//
-//	if (!pGcpLists.empty())
-//	{
-//		QStringList aoiNames("<none>");
-//		for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
-//		{
-//			aoiNames << QString::fromStdString((*it)->getName());
-//		}
-//		QString aoi = QInputDialog::getItem(Service<DesktopServices>()->getMainWidget(),
-//			"Select a GCP List", "Select a GCP List for processing", aoiNames);
-//
-//		if (aoi != "<none>")
-//		{
-//			std::string strAoi = aoi.toStdString();
-//			for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
-//			{
-//				if ((*it)->getName() == strAoi)
-//				{
-//					GCPs = static_cast<GcpList*>(*it);
-//					break;
-//				}
-//			}
-//			if (GCPs == NULL)
-//			{
-//				std::string msg = "Invalid GCPList.";
-//				pProgress->updateProgress(msg, 0, ERRORS);
-//				return false;
-//			}
-//		}
-//		else
-//		{
-//			std::string msg = "A set of GCPs must be specified.";
-//			if (pProgress.get() != NULL)
-//			{
-//				pProgress->updateProgress(msg, 0, ERRORS);
-//			}
-//			return false;
-//		}
-//	}
-//
-//	/*Compensate for increase in resolution of output image */
-//	std::list<GcpPoint> pNewGcpList = GCPs->getSelectedPoints();
-//
-//	for (std::list<GcpPoint>::iterator it = (pNewGcpList.begin()); it != pNewGcpList.end(); ++it)
-//	{
-//		(*it).mPixel.mX *= (x_out->text().toDouble() / pDesc1->getColumnCount());
-//		(*it).mPixel.mY *= (y_out->text().toDouble() / pDesc1->getRowCount());
-//	}
-//
-//	GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
-//	newGCPList->addPoints(pNewGcpList);
-//
-//	pDestDesc->setGeoreferenceDescriptor(pDesc1->getGeoreferenceDescriptor());
-//	GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
-//	/*pDestDesc->getGeoreferenceDescriptor()->setLayerName("GEO_RESULT");
-//	pDestDesc->getGeoreferenceDescriptor()->setCreateLayer(true);
-//	pDestDesc->getGeoreferenceDescriptor()->setDisplayLayer(true);
-//	pDestDesc->getGeoreferenceDescriptor()->setSettingAutoGeoreference(true);*/
-//
-//	Service<DesktopServices> pDesktop;
-//
-//	SpatialDataWindow* pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pResultCube->getName(), SPATIAL_DATA_WINDOW));
-//
-//	SpatialDataView* pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
-//	if (pView == NULL){
-//		std::string msg = "Unable to create view.";
-//		pStep->finalize(Message::Failure, msg);
-//		pProgress->updateProgress(msg, 0, ERRORS);
-//		return false;
-//	}
-//
-//	const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
-//	if (!plugInName.empty()){
-//		ExecutableResource geoPlugIn(plugInName);
-//		PlugInArgList& argList = geoPlugIn->getInArgList();
-//		argList.setPlugInArgValue(Executable::DataElementArg(), pResultCube.get());
-//		argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
-//		argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
-//		if (geoPlugIn->execute() == false)
-//		{
-//			std::string message = "Could not georeference the data set.";
-//			pProgress->updateProgress(message, 0, WARNING);
-//
-//			pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
-//		}
-//		else
-//		{
-//			geoPlugIn.release();
-//			pStep->finalize(Message::Success);
-//		}
-//	}
-//	else
-//	{
-//		std::string message = "A georeference plug-in is not available to georeference the data set.";
-//		pProgress->updateProgress(message, 0, WARNING);
-//		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
-//	}
-//
-//	bool overlapped = false;
-//	int num_overlap_images;
-//	double drop = dropsize->text().toDouble();
-//
-//	//Drizzle images onto destination image.
-//	
-//		//Reset destination image to top left pixel.
-//		pDestAcc->toPixel(0,0);
-//		for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-//			//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
-//			pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
-//			if (!pDestAcc.isValid())
-//			{
-//				std::string msg = "Unable to access the cube data.";
-//				pStep->finalize(Message::Failure, msg);
-//				pProgress->updateProgress(msg, 0, ERRORS);
-//				return false;
-//			}
-//
-//			for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
-//			{
-//				switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
-//				num_overlap_images=1;
-//				for (int i=0; i<images.size();i++){
-//					overlapped=false;
-//					switchOnEncoding(pDestDesc->getDataType(), Drizzle, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
-//					if(overlapped) num_overlap_images++;
-//				}
-//				switchOnEncoding(pDestDesc->getDataType(), Divide, pDestAcc->getColumn(), num_overlap_images);
-//				pDestAcc->nextColumn();
-//			}
-//			pDestAcc->nextRow();
-//		}
-//
-//	images.clear();
-//	pDesc.clear();
-//	pSrcAcc.clear();
-//	pGcpLists.clear();
-//
-//	pView->setPrimaryRasterElement(pResultCube.get());
-//	pView->createLayer(RASTER, pResultCube.get());
-//
-//	pView->createLayer(GCP_LAYER,newGCPList,"Corner Coordinates");
-//
-//	pResultCube.release();
-//
-//	pStep->finalize();
-//	pProgress->updateProgress("Done", 100, NORMAL);
-//	this->accept();
-//	this->finished(1);
-//	return true;
-//}
+void DrizzleVideo_GUI::init()
+{
+	//Initialize buttons
+	connect(Cancel, SIGNAL(clicked()), this, SLOT(reject()));
+	connect(Apply, SIGNAL(clicked()), this, SLOT(PerformDrizzle()));
+	connect(Rasterlist, SIGNAL(currentIndexChanged(int)), this, SLOT(updateInfo()));
+
+	//Get RasterElements
+	Service<ModelServices> Model;
+	RasterElements = Model->getElementNames("RasterElement");
+
+	for (unsigned int i = 0; i < RasterElements.size(); i++)
+	{
+		Rasterlist->insertItem(i, QString::fromStdString(RasterElements[i]));
+	}
+	Rasterlist->setMinimumWidth(Rasterlist->sizeHint().rwidth());
+	Rasterlist->setMaximumWidth(Rasterlist->sizeHint().rwidth());
+		
+	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
+	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
+	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
+	Size->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+
+	this->layout()->setSizeConstraint( QLayout::SetFixedSize );
+}
+
+void DrizzleVideo_GUI::updateInfo(){
+	Service<ModelServices> Model;
+	//Get size information
+	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist->currentIndex()),"",NULL)->getDataDescriptor());
+	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
+	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
+	Size->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+}
+
+void DrizzleVideo_GUI::closeGUI(){
+	this->reject();
+}
+
+bool DrizzleVideo_GUI::PerformDrizzle(){
+	//Service<ModelServices> pModel;
+	//StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
+	//ProgressResource pProgress("ProgressBar");
+
+	//RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
+	//std::vector<RasterElement*> images;
+
+	//for (int i=0; i < RasterElements.size();i++){
+	//	if((Rasterlist2->item(i)->checkState())){
+	//		if(QString::fromStdString(RasterElements[Rasterlist1->currentIndex()]) == Rasterlist2->item(i)->text()){
+	//			pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
+	//			return false;
+	//		}
+	//		else{
+	//			images.push_back(dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(i),"",NULL )));
+	//		}
+	//	}
+	//}
+
+	//if (image1 == NULL || images.size() == 0)
+	//{				
+	//	pProgress->updateProgress("Image import failed", 100, ERRORS);
+	//	return false;	
+	//}
+	//pProgress->updateProgress("Image import succesfull", 0, NORMAL);
+
+	//RasterDataDescriptor* pDesc1 = static_cast<RasterDataDescriptor*>(image1->getDataDescriptor());
+
+	//if (pDesc1->getDataType() == INT4SCOMPLEX || pDesc1->getDataType() == FLT8COMPLEX)
+	//{
+	//	std::string msg = "Drizzle cannot be performed on complex types.";
+	//	pStep->finalize(Message::Failure, msg);
+	//	return false;
+	//}
+
+	//std::vector<RasterDataDescriptor*> pDesc;
+
+	//for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
+
+	//	if(!image1->isGeoreferenced() || !(*it)->isGeoreferenced()){
+	//		pProgress->updateProgress("Images are not georeferenced", 100, ERRORS);
+	//		return false;	
+	//	}
+
+	//	if ((static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == INT4SCOMPLEX || (static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == FLT8COMPLEX){
+	//		std::string msg = "Drizzle cannot be performed on complex types.";
+	//		pStep->finalize(Message::Failure, msg);
+	//		return false;
+	//	}
+	//	else{
+	//		pDesc.push_back(static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()));
+	//	}
+	//}
+
+	//FactoryResource<DataRequest> pRequest1;
+
+	//DataAccessor pSrcAcc1 = image1->getDataAccessor(pRequest1.release());
+	//std::vector<DataAccessor> pSrcAcc;
+	//
+	//for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
+	//	FactoryResource<DataRequest> pRequest;
+	//	pSrcAcc.push_back((*it)->getDataAccessor(pRequest.release()));
+	//}
+
+	//if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
+	//{
+	//	pProgress->updateProgress("No output size specified.", 100, ERRORS);
+	//	return false;
+	//}
+
+	//if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
+	//{
+	//	pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
+	//	return false;
+	//}
+
+	//ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement(image1->getName() + "_Drizzled", y_out->text().toDouble(), x_out->text().toDouble(), pDesc1->getDataType()));
+
+	//if (pResultCube.get() == NULL){
+	//	std::string msg = "A raster cube could not be created.";
+	//	pStep->finalize(Message::Failure, msg);
+	//	return false;
+	//}
+
+	//FactoryResource<DataRequest> pResultRequest;
+	//pResultRequest->setWritable(true);
+	//DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
+	//RasterDataDescriptor* pDestDesc = static_cast<RasterDataDescriptor*>(pResultCube->getDataDescriptor());
+
+	///* GET GCPs OF INPUT IMAGE */
+	//GcpList * GCPs = NULL;		//New GCPList
+
+	//std::vector<DataElement*> pGcpLists = pModel->getElements(pSrcAcc1->getAssociatedRasterElement(), TypeConverter::toString<GcpList>());		//Get GCPLists of input image
+
+	//if (!pGcpLists.empty())
+	//{
+	//	QStringList aoiNames("<none>");
+	//	for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
+	//	{
+	//		aoiNames << QString::fromStdString((*it)->getName());
+	//	}
+	//	QString aoi = QInputDialog::getItem(Service<DesktopServices>()->getMainWidget(),
+	//		"Select a GCP List", "Select a GCP List for processing", aoiNames);
+
+	//	if (aoi != "<none>")
+	//	{
+	//		std::string strAoi = aoi.toStdString();
+	//		for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
+	//		{
+	//			if ((*it)->getName() == strAoi)
+	//			{
+	//				GCPs = static_cast<GcpList*>(*it);
+	//				break;
+	//			}
+	//		}
+	//		if (GCPs == NULL)
+	//		{
+	//			std::string msg = "Invalid GCPList.";
+	//			pProgress->updateProgress(msg, 0, ERRORS);
+	//			return false;
+	//		}
+	//	}
+	//	else
+	//	{
+	//		std::string msg = "A set of GCPs must be specified.";
+	//		if (pProgress.get() != NULL)
+	//		{
+	//			pProgress->updateProgress(msg, 0, ERRORS);
+	//		}
+	//		return false;
+	//	}
+	//}
+
+	///*Compensate for increase in resolution of output image */
+	//std::list<GcpPoint> pNewGcpList = GCPs->getSelectedPoints();
+
+	//for (std::list<GcpPoint>::iterator it = (pNewGcpList.begin()); it != pNewGcpList.end(); ++it)
+	//{
+	//	(*it).mPixel.mX *= (x_out->text().toDouble() / pDesc1->getColumnCount());
+	//	(*it).mPixel.mY *= (y_out->text().toDouble() / pDesc1->getRowCount());
+	//}
+
+	//GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
+	//newGCPList->addPoints(pNewGcpList);
+
+	//pDestDesc->setGeoreferenceDescriptor(pDesc1->getGeoreferenceDescriptor());
+	//GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
+	///*pDestDesc->getGeoreferenceDescriptor()->setLayerName("GEO_RESULT");
+	//pDestDesc->getGeoreferenceDescriptor()->setCreateLayer(true);
+	//pDestDesc->getGeoreferenceDescriptor()->setDisplayLayer(true);
+	//pDestDesc->getGeoreferenceDescriptor()->setSettingAutoGeoreference(true);*/
+
+	//Service<DesktopServices> pDesktop;
+
+	//SpatialDataWindow* pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pResultCube->getName(), SPATIAL_DATA_WINDOW));
+
+	//SpatialDataView* pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
+	//if (pView == NULL){
+	//	std::string msg = "Unable to create view.";
+	//	pStep->finalize(Message::Failure, msg);
+	//	pProgress->updateProgress(msg, 0, ERRORS);
+	//	return false;
+	//}
+
+	//const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
+	//if (!plugInName.empty()){
+	//	ExecutableResource geoPlugIn(plugInName);
+	//	PlugInArgList& argList = geoPlugIn->getInArgList();
+	//	argList.setPlugInArgValue(Executable::DataElementArg(), pResultCube.get());
+	//	argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
+	//	argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
+	//	if (geoPlugIn->execute() == false)
+	//	{
+	//		std::string message = "Could not georeference the data set.";
+	//		pProgress->updateProgress(message, 0, WARNING);
+
+	//		pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
+	//	}
+	//	else
+	//	{
+	//		geoPlugIn.release();
+	//		pStep->finalize(Message::Success);
+	//	}
+	//}
+	//else
+	//{
+	//	std::string message = "A georeference plug-in is not available to georeference the data set.";
+	//	pProgress->updateProgress(message, 0, WARNING);
+	//	pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
+	//}
+
+	//bool overlapped = false;
+	//int num_overlap_images;
+	//double drop = dropsize->text().toDouble();
+
+	////Drizzle images onto destination image.
+	//
+	//	//Reset destination image to top left pixel.
+	//	pDestAcc->toPixel(0,0);
+	//	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
+	//		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+	//		pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
+	//		if (!pDestAcc.isValid())
+	//		{
+	//			std::string msg = "Unable to access the cube data.";
+	//			pStep->finalize(Message::Failure, msg);
+	//			pProgress->updateProgress(msg, 0, ERRORS);
+	//			return false;
+	//		}
+
+	//		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
+	//		{
+	//			switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
+	//			num_overlap_images=1;
+	//			for (int i=0; i<images.size();i++){
+	//				overlapped=false;
+	//				switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
+	//				if(overlapped) num_overlap_images++;
+	//			}
+	//			switchOnEncoding(pDestDesc->getDataType(), DivideVideo, pDestAcc->getColumn(), num_overlap_images);
+	//			pDestAcc->nextColumn();
+	//		}
+	//		pDestAcc->nextRow();
+	//	}
+
+	//images.clear();
+	//pDesc.clear();
+	//pSrcAcc.clear();
+	//pGcpLists.clear();
+
+	//pView->setPrimaryRasterElement(pResultCube.get());
+	//pView->createLayer(RASTER, pResultCube.get());
+
+	//pView->createLayer(GCP_LAYER,newGCPList,"Corner Coordinates");
+
+	//pResultCube.release();
+
+	//pStep->finalize();
+	//pProgress->updateProgress("Done", 100, NORMAL);
+	//this->accept();
+	//this->finished(1);
+	return true;
+}

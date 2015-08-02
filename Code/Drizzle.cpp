@@ -15,10 +15,12 @@
 #include "PlugInRegistration.h"
 #include "RasterElement.h"
 #include "Drizzle.h"
+#include "DrizzleVideo_GUI.h"
 #include "DesktopServices.h"
 #include "ModelServices.h"
 #include "Progress.h"
 #include "SessionItemSerializer.h"
+#include "hdf5.h"
 
 #include <Qt\qapplication.h>
 #include <Qt\qmessagebox.h>
@@ -115,7 +117,24 @@ void Drizzle::imageGUI()
 
 void Drizzle::videoGUI()
 {
-	gui->accept();
+	Service<ModelServices> Model;
+	std::vector<DataElement*> RasterElements = Model->getElements("RasterElement");
+	
+	StepResource pStep( "Drizzle GUI", "app", "96DCEBD9-32CA-44E5-AEA8-2DDAD7DAD939" );
+	
+	if ( RasterElements.size() == 0 ){
+		QMessageBox::critical( gui, "Drizzle", "No RasterElements found!", "Back" );
+		pStep->finalize( Message::Failure, "No RasterElements found!" );
+		return;
+	}
+	delete gui;
+
+	Service<DesktopServices> pDesktop;
+	gui = new DrizzleVideo_GUI(pDesktop->getMainWidget(), "GUI");
+	connect(gui, SIGNAL( finished(int) ), this, SLOT( closeGUI()) );
+    gui->show();
+
+	pStep->finalize(Message::Success);
 }
 
 bool Drizzle::execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList)

@@ -25,25 +25,18 @@ class DrizzleVideo_GUI : public QDialog
 public:
 	DrizzleVideo_GUI(QWidget* Parent, const char* Name);
 	~DrizzleVideo_GUI();
-/*public slots:
+public slots:
 	void closeGUI();
 	bool PerformDrizzle();
-	void updateInfo1();
-	void updateInfo2();
+	void updateInfo();
 private:
-	QLabel *Image1;
-	QLabel *Image2;
-	QLabel *Size1;
-	QLabel *Size2;
-	QLabel *Geo1;
-	QLabel *Geo2;
+	QLabel *Video;
+	QLabel *Size;
 
 	QPushButton *Cancel;
 	QPushButton *Apply;
 
-	QComboBox *Rasterlist1;
-
-	QListWidget *Rasterlist2;
+	QComboBox *Rasterlist;
 
 	QLabel *x_out_text;
 	QLabel *y_out_text;
@@ -54,7 +47,7 @@ private:
 
 	std::vector<std::string> RasterElements;
 
-	void init();*/
+	void init();
 
 };
 #endif
