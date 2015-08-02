@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'Drizzle.h'
 **
-** Created: Mon 20. Jul 16:57:54 2015
+** Created: Sun 2. Aug 11:11:36 2015
 **      by: The Qt Meta Object Compiler version 62 (Qt 4.7.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_Drizzle[] = {
        5,       // revision
        0,       // classname
        0,    0, // classinfo
-       1,   14, // methods
+       4,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -32,12 +32,16 @@ static const uint qt_meta_data_Drizzle[] = {
 
  // slots: signature, parameters, type, tag, flags
        9,    8,    8,    8, 0x0a,
+      20,    8,    8,    8, 0x0a,
+      35,    8,    8,    8, 0x0a,
+      46,    8,    8,    8, 0x0a,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_Drizzle[] = {
-    "Drizzle\0\0closeGUI()\0"
+    "Drizzle\0\0closeGUI()\0closemainGUI()\0"
+    "imageGUI()\0videoGUI()\0"
 };
 
 const QMetaObject Drizzle::staticMetaObject = {
@@ -72,9 +76,12 @@ int Drizzle::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_c == QMetaObject::InvokeMetaMethod) {
         switch (_id) {
         case 0: closeGUI(); break;
+        case 1: closemainGUI(); break;
+        case 2: imageGUI(); break;
+        case 3: videoGUI(); break;
         default: ;
         }
-        _id -= 1;
+        _id -= 4;
     }
     return _id;
 }

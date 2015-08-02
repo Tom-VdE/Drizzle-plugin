@@ -36,10 +36,13 @@ public:
 
 public slots:
 	void closeGUI();
+	void closemainGUI();
+	void imageGUI();
+	void videoGUI();
 
 private:
 	bool openGUI();
-	Drizzle_GUI* gui;
+	QDialog* gui;
 };
 
 #endif

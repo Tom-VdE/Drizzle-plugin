@@ -22,6 +22,7 @@
 
 #include <Qt\qapplication.h>
 #include <Qt\qmessagebox.h>
+#include <Qt\qlayout.h>
 
 REGISTER_PLUGIN_BASIC(ImageEnhancement, Drizzle);
 
@@ -63,22 +64,58 @@ bool Drizzle::getOutputSpecification(PlugInArgList*& pOutArgList)
 
 bool Drizzle::openGUI()
 {
-	Service<DesktopServices> pDesktop;
-	Service<ModelServices> Model;
-	StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
-	std::vector<DataElement*> RasterElements = Model->getElements( "RasterElement" );
+	gui = new QDialog(NULL);
+	gui->setWindowTitle("Drizzle algorithm");
 
+	QPushButton* Image = new QPushButton( "imageButton", gui);
+	Image->setText("Drizzle images.");
+
+	QPushButton* Video = new QPushButton( "videoButton", gui);
+	Video->setText("Drizzle video to image.");
+
+	QPushButton* Cancel = new QPushButton( "cancelButton", gui);
+	Cancel->setText("Cancel");
+
+	QGridLayout* pLayout = new QGridLayout(gui);
+
+	pLayout->addWidget(Image, 0, 0);
+	pLayout->addWidget(Video, 0, 1);
+	pLayout->addWidget(Cancel, 0, 2);
+
+	connect(Image, SIGNAL(clicked()), this, SLOT(imageGUI()));
+	connect(Video, SIGNAL(clicked()), this, SLOT(videoGUI()));
+	connect(Cancel, SIGNAL(clicked()), this, SLOT(closemainGUI()));
+	
+	gui->show();
+
+    return true;
+}
+
+void Drizzle::imageGUI()
+{
+	Service<ModelServices> Model;
+	std::vector<DataElement*> RasterElements = Model->getElements( "RasterElement" );
+	
+	StepResource pStep( "Drizzle GUI", "app", "2CAC3F3C-9723-48EB-869B-745303B6227E" );
+	
 	if ( RasterElements.size() == 0 ){
-		QMessageBox::critical( NULL, "Drizzle", "No RasterElements found!", "Back" );
+		QMessageBox::critical( gui, "Drizzle", "No RasterElements found!", "Back" );
 		pStep->finalize( Message::Failure, "No RasterElements found!" );
-		return false;
+		return;
 	}
+	delete gui;
+
+	Service<DesktopServices> pDesktop;
 	gui = new Drizzle_GUI(pDesktop->getMainWidget(), "GUI");
-	connect(gui, SIGNAL( finsished(int) ), this, SLOT( closeGUI()) );
+	connect(gui, SIGNAL( finished(int) ), this, SLOT( closeGUI()) );
     gui->show();
 
 	pStep->finalize(Message::Success);
-    return true;
+}
+
+void Drizzle::videoGUI()
+{
+	gui->accept();
 }
 
 bool Drizzle::execute(PlugInArgList* pInArgList, PlugInArgList* pOutArgList)
@@ -101,7 +138,12 @@ bool Drizzle::deserialize(SessionItemDeserializer &deserializer)
    return openGUI();
 }
 
+void Drizzle::closemainGUI()
+{
+	gui->accept();
+}
+
 void Drizzle::closeGUI()
 {
-   abort();
+   
 }

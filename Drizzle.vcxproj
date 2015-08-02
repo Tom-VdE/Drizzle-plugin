@@ -153,8 +153,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_Drizzle.cpp" />
+    <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_DrizzleVideo_GUI.cpp" />
     <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_Drizzle_GUI.cpp" />
     <ClCompile Include="Drizzle.cpp" />
+    <ClCompile Include="DrizzleVideo_GUI.cpp" />
     <ClCompile Include="Drizzle_GUI.cpp" />
     <ClCompile Include="ModuleManager.cpp" />
   </ItemGroup>
@@ -179,6 +181,13 @@
       <Project>{4831b6df-aeac-4f12-a0b5-ce3ca703fb88}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="DrizzleVideo_GUI.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTBIN)\moc.exe" "%(FullPath)" -o "$(BuildDir)\Moc\$(ProjectName)\moc_%(Filename).cpp"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Moc%27ing %(Filename).h...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(BuildDir)\Moc\$(ProjectName)\moc_%(Filename).cpp;%(Outputs)</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
