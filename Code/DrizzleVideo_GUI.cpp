@@ -49,11 +49,23 @@
 #include "StringUtilities.h"
 #include "drizzle_helper_functions.h"
 
-
 #include <Qt/QInputDialog.h>
 #include <Qt/qgridlayout.h>
 #include <Qt/qapplication.h>
 #include <Qt/qmessagebox.h>
+
+#include <stdio.h>
+
+
+#include <opencv\cv.hpp>
+#include <opencv2\opencv.hpp>
+#include <opencv2\opencv_modules.hpp>
+#include <opencv2\nonfree\nonfree.hpp>
+
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+using namespace cv;
 
 namespace
 {
@@ -202,10 +214,10 @@ namespace
 					double dyh = (((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize);	//total difference in y coorindate in horizontal direction
 
 					(ptlx1,ptly1)	o-------------o (ptrx1,ptry1)
-									|			  |
-									|  one pixel  |
-									|			  |
-									|			  |
+					|			  |
+					|  one pixel  |
+					|			  |
+					|			  |
 					(pblx1,pbly1)	o-------------o (pbrx1,pbry1)
 
 					double ptlx1 = tlx1 + dxv*srccol + dxh*srcrow;					//top left x coordinate of pixel
@@ -280,12 +292,12 @@ namespace
 						clip.push_back(*blcliplt);
 						clip.push_back(*brcliplt);
 						clip.push_back(*trcliplt);
-						
+
 						std::vector<LocationType> p1;
 						std::vector<LocationType> tmp;
 
 						int dir = int(drizzle_helper_functions::left_of(clip[0], clip[1], clip[2]));
-						
+
 						drizzle_helper_functions::poly_edge_clip(subject, clip[clip.size()-1], clip[0], dir, &ipoints);
 
 						for (int i = 0; i < clip.size()-1; i++) {
@@ -308,7 +320,7 @@ namespace
 							//SORT IPOINTS TO A COUNTERCLOCKWISE DIRECTION
 							/*int leastY = 0;
 							for (int i = 0; i < ipoints.size(); i++){
-								if (ipoints[i].mY < ipoints[leastY].mY) leastY = i;
+							if (ipoints[i].mY < ipoints[leastY].mY) leastY = i;
 							}
 
 							// Swap the pivot with the first point
@@ -367,10 +379,22 @@ namespace
 
 namespace
 {
-template<typename T>
+	template<typename T>
 	void DivideVideo(T* pData, int num_overlap_images)
 	{
 		*pData = static_cast<T>(*pData/num_overlap_images);
+	}
+}
+
+inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+{
+	if ( *img != NULL )	return;
+
+	*img = cvCreateImage( size, depth, channels );
+	if ( *img == NULL )
+	{
+		fprintf(stderr, "Error: Couldn't allocate image.  Out of memory?\n");
+		exit(-1);
 	}
 }
 
@@ -443,7 +467,7 @@ void DrizzleVideo_GUI::init()
 	}
 	Rasterlist->setMinimumWidth(Rasterlist->sizeHint().rwidth());
 	Rasterlist->setMaximumWidth(Rasterlist->sizeHint().rwidth());
-		
+
 	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
 	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
 	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
@@ -466,6 +490,168 @@ void DrizzleVideo_GUI::closeGUI(){
 }
 
 bool DrizzleVideo_GUI::PerformDrizzle(){
+	StepResource pStep( "DrizzleVideo GUI", "app", "7743FFD5-C2DA-4AD5-B0F0-9D6AF2C01A86" );
+	CvCapture* input_video = cvCreateFileCapture("C:\\Users\\Tom\\Videos\\Jubileum\\lena.mp4");
+	if (input_video == NULL)
+	{
+		QMessageBox::critical( this, "Drizzle", "Video input failed'", "Back" );
+		pStep->finalize( Message::Failure, "No RasterElements found!" );
+		return false;
+	}
+	cvQueryFrame(input_video);
+
+	CvSize frame_size;
+	frame_size.height = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_HEIGHT );
+	frame_size.width = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_WIDTH );
+
+	long number_of_frames;
+
+	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_AVI_RATIO, 1. );
+
+	number_of_frames = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES );
+
+	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES, 0. );
+
+	long current_frame = 0;
+	std::vector<Point2f> prev_frame_corners(4);
+	prev_frame_corners[0] = cvPoint(0,0);
+	prev_frame_corners[1] = cvPoint(0,frame_size.height);
+	prev_frame_corners[2] = cvPoint(frame_size.width,frame_size.height);
+	prev_frame_corners[3] = cvPoint(frame_size.width,0);
+	
+	while(true)
+	{
+		static IplImage *frame = NULL, *frame2_1C = NULL, *frame2 = NULL, *pyramid1 = NULL, *pyramid2 = NULL, *frame1 = NULL, *frame1_1C = NULL, *eig_image = NULL, *temp_image = NULL;
+
+		cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES, current_frame );
+
+		frame = cvQueryFrame( input_video );
+		if(frame == NULL)
+		{
+			QMessageBox::critical( this, "Drizzle",  "Error: unable load frame.", "Back" );
+			pStep->finalize( Message::Failure,  "Error: unable load frame." );
+			return false;
+		}
+
+		allocateOnDemand( &frame1_1C, frame_size, IPL_DEPTH_8U, 1 );
+
+		cvConvertImage(frame, frame1_1C, CV_CVTIMG_FLIP);
+
+		allocateOnDemand( &frame1, frame_size, IPL_DEPTH_8U, 3 );
+		cvConvertImage(frame, frame1, CV_CVTIMG_FLIP);
+
+		frame = cvQueryFrame( input_video );
+		if (frame == NULL)
+		{
+			QMessageBox::critical( this, "Drizzle", "Error: unable load frame.", "Back" );
+			pStep->finalize( Message::Failure, "Error: unable load frame." );
+			return false;
+		}
+		allocateOnDemand( &frame2_1C, frame_size, IPL_DEPTH_8U, 1 );
+		cvConvertImage(frame, frame2_1C, CV_CVTIMG_FLIP);
+		allocateOnDemand( &frame2, frame_size, IPL_DEPTH_8U, 3 );
+		cvConvertImage(frame, frame2, CV_CVTIMG_FLIP);
+		
+		/* SURF */
+
+		std::vector< KeyPoint > frame1_features;
+		std::vector< KeyPoint >  frame2_features;
+		
+		int minHessian = 600;
+		SurfFeatureDetector detector(minHessian);
+
+		detector.detect( frame1_1C, frame1_features );
+		detector.detect( frame2_1C, frame2_features );
+
+		SurfDescriptorExtractor extractor;
+
+		cv::Mat frame1_descriptors, frame2_descriptors;
+
+		extractor.compute(frame1_1C,frame1_features,frame1_descriptors);
+		extractor.compute(frame2_1C,frame2_features,frame2_descriptors);
+
+		FlannBasedMatcher matcher;
+		std::vector<DMatch> matches;
+
+		matcher.match(frame1_descriptors, frame2_descriptors, matches);
+		
+		double max_dist = 0; double min_dist = 100;
+		
+		for( int i = 0; i < frame1_descriptors.rows; i++ )
+		{ double dist = matches[i].distance;
+			if( dist < min_dist && dist != 0 ) min_dist = dist;
+			if( dist > max_dist ) max_dist = dist;
+		}
+
+		std::vector< DMatch > good_matches;
+
+		for( int i = 0; i < frame1_descriptors.rows; i++ )
+		{ 
+			//if( matches[i].distance < 100*min_dist )
+			{ 
+				good_matches.push_back( matches[i]); 
+			}
+		}
+
+		cv::Mat img_matches;
+		cv::Mat frame1_mat = cv::Mat(frame1);
+		drawMatches( frame1_mat,  frame1_features,cv::Mat(frame2), frame2_features, good_matches, img_matches, Scalar::all(-1), Scalar::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+		std::vector< Point2f > frame1_matches;
+		std::vector< Point2f > frame2_matches;
+
+		for( int i = 0; i < good_matches.size(); i++ )
+		{
+			// Only keypoint from good matches
+			frame1_matches.push_back( frame1_features[ good_matches[i].queryIdx ].pt );
+			frame2_matches.push_back( frame2_features[ good_matches[i].trainIdx ].pt );
+		}
+		
+		Mat H = findHomography( frame1_matches, frame2_matches, CV_RANSAC );
+		
+		//-- Get the corners from the frame_1
+		std::vector<Point2f> frame1_corners(4);
+		frame1_corners[0] = prev_frame_corners[0];
+		frame1_corners[1] = prev_frame_corners[1];
+		frame1_corners[2] = prev_frame_corners[2];
+		frame1_corners[3] = prev_frame_corners[3];
+		
+		std::vector<Point2f> frame2_corners(4);
+		perspectiveTransform( frame1_corners, frame2_corners, H);
+
+		//-- Draw lines between the corners
+		line( img_matches, frame2_corners[0] + Point2f( frame1_mat.cols, 0), frame2_corners[1] + Point2f( frame1_mat.cols, 0), Scalar(0, 255, 0), 4 );
+		line( img_matches, frame2_corners[1] + Point2f( frame1_mat.cols, 0), frame2_corners[2] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
+		line( img_matches, frame2_corners[2] + Point2f( frame1_mat.cols, 0), frame2_corners[3] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
+		line( img_matches, frame2_corners[3] + Point2f( frame1_mat.cols, 0), frame2_corners[0] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
+		
+		imshow( "Location of frame1 in frame 2", img_matches );	
+
+		pStep->addProperty("tlx",frame2_corners[0].x);
+		pStep->addProperty("tly",frame2_corners[0].y);
+		pStep->addProperty("blx",frame2_corners[1].x);
+		pStep->addProperty("bly",frame2_corners[1].y);
+		pStep->addProperty("brx",frame2_corners[2].x);
+		pStep->addProperty("bry",frame2_corners[2].y);
+		pStep->addProperty("trx",frame2_corners[3].x);
+		pStep->addProperty("try",frame2_corners[3].y);
+
+		//cvShowImage("Frame1", frame1);
+		//cvShowImage("Frame2", frame2);
+		
+		prev_frame_corners[0] = frame2_corners[0];
+		prev_frame_corners[1] = frame2_corners[1];
+		prev_frame_corners[2] = frame2_corners[2];
+		prev_frame_corners[3] = frame2_corners[3];
+
+		int key_pressed;
+		key_pressed = cvWaitKey(0);
+		current_frame++;
+		
+		if (current_frame < 0) current_frame = 0;
+		if (current_frame >= number_of_frames - 1) current_frame = number_of_frames - 2;
+	}
+
 	//Service<ModelServices> pModel;
 	//StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
 	//ProgressResource pProgress("ProgressBar");
@@ -706,6 +892,7 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 	//pStep->finalize();
 	//pProgress->updateProgress("Done", 100, NORMAL);
 	//this->accept();
-	//this->finished(1);
+	//this->finished(1);	
+	pStep->finalize(Message::Success);
 	return true;
 }

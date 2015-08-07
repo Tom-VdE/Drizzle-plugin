@@ -54,6 +54,8 @@
 #include <Qt/qapplication.h>
 #include <Qt/qmessagebox.h>
 
+
+
 namespace
 {
 	template<typename T>

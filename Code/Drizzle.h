@@ -12,8 +12,8 @@
 #define DRIZZLE_H
 
 #include "Drizzle_GUI.h"
+#include "DrizzleVideo_GUI.h"
 #include "ViewerShell.h"
-
 
 #include <Qt/qaction.h>
 #include <Qt/qgroupbox.h>

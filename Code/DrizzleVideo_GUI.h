@@ -18,7 +18,6 @@
 #include <Qt/qlineedit.h>
 #include <Qt/qlistwidget.h>
 
-
 class DrizzleVideo_GUI : public QDialog
 {
 	Q_OBJECT

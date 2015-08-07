@@ -15,7 +15,6 @@
 #include "PlugInRegistration.h"
 #include "RasterElement.h"
 #include "Drizzle.h"
-#include "DrizzleVideo_GUI.h"
 #include "DesktopServices.h"
 #include "ModelServices.h"
 #include "Progress.h"
