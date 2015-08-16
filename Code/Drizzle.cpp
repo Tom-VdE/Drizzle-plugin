@@ -121,11 +121,6 @@ void Drizzle::videoGUI()
 	
 	StepResource pStep( "Drizzle GUI", "app", "96DCEBD9-32CA-44E5-AEA8-2DDAD7DAD939" );
 	
-	if ( RasterElements.size() == 0 ){
-		QMessageBox::critical( gui, "Drizzle", "No RasterElements found!", "Back" );
-		pStep->finalize( Message::Failure, "No RasterElements found!" );
-		return;
-	}
 	delete gui;
 
 	Service<DesktopServices> pDesktop;
