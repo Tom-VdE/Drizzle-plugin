@@ -53,6 +53,8 @@
 #include <Qt/qgridlayout.h>
 #include <Qt/qapplication.h>
 #include <Qt/qmessagebox.h>
+#include <Qt/qfiledialog.h>
+#include <Qt/qdir.h>
 
 #include <stdio.h>
 
@@ -70,7 +72,7 @@ using namespace cv;
 namespace
 {
 	template<typename T>
-	void DrizzleVideo(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, bool* overlapped)
+	void DrizzleVideo(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, double* num_overlap_images)
 	{
 		std::vector<LocationType> ipoints;
 
@@ -203,6 +205,9 @@ namespace
 		int rbrsrcrow = int(std::ceil(brsrcrow));
 		int rblsrccol = int(std::ceil(blsrccol));
 		int rblsrcrow = int(std::floor(blsrcrow));
+
+		bool overlapped = false;
+		unsigned long temp = 0;
 
 		for(int srcrow = std::min(std::min(rtlsrcrow,rtrsrcrow),std::min(rblsrcrow,rbrsrcrow)); srcrow <= std::max(std::max(rtlsrcrow,rtrsrcrow),std::max(rblsrcrow,rbrsrcrow)); srcrow++){
 			for(int srccol = std::min(std::min(rtlsrccol,rtrsrccol),std::min(rblsrccol,rbrsrccol)); srccol <= std::max(std::max(rtlsrccol,rtrsrccol),std::max(rblsrccol,rbrsrccol)); srccol++){
@@ -350,9 +355,11 @@ namespace
 
 							pSrcAcc->toPixel(srcrow, srccol);
 							VERIFYNRV(pSrcAcc.isValid());
+
 							T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());
-							*pData += static_cast<T>(area*srcpixel);
-							*overlapped=true;
+							//*pData += static_cast<T>(area*srcpixel);							
+							temp += area*srcpixel;
+							overlapped = true;
 
 							delete tlsubjectlt;
 							delete blsubjectlt;
@@ -373,6 +380,12 @@ namespace
 				}
 			}
 		}
+		if(*num_overlap_images!=0){
+			*pData = static_cast<T>(static_cast<double>(*pData) * (*num_overlap_images)/(*num_overlap_images+1));
+		}
+		*pData += static_cast<T>(temp / ((*num_overlap_images+1.0)));
+
+		if(overlapped) (*num_overlap_images)++;
 		//ipoints.clear();
 	}
 };
@@ -384,7 +397,16 @@ namespace
 	{
 		*pData = static_cast<T>(*pData/num_overlap_images);
 	}
-}
+};
+
+namespace
+{
+	template<typename T>
+	void IplImagetoRaster(T* pData, double frame_pixel)
+	{
+		*pData = static_cast<T>(frame_pixel);
+	}
+};
 
 inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
 {
@@ -396,6 +418,7 @@ inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int
 		fprintf(stderr, "Error: Couldn't allocate image.  Out of memory?\n");
 		exit(-1);
 	}
+
 }
 
 DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
@@ -410,27 +433,38 @@ DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(P
 	Cancel = new QPushButton( "cancelButton", this );
 	Cancel->setText("Cancel");
 
+	Browse = new QPushButton( "browseButton", this );
+	Browse->setText("Browse");
+
 	Video = new QLabel("Select input video", this);
+	Size = new QLabel("Input frame size:", this);
+	NumImages = new QLabel(" / ", this);
 
-	Size = new QLabel("Size:", this);
-
-	Rasterlist = new QComboBox(this);
+	Dir = new QLineEdit(this);
 
 	x_out_text = new QLabel("Output size (x)");
 	y_out_text = new QLabel("Output size (y)");
 	dropsize_text = new QLabel("Dropsize");
+	num_images_text = new QLabel("Number of frames:");
 	x_out = new QLineEdit(this);
 	y_out = new QLineEdit(this);
 	dropsize = new QLineEdit(this);
+	num_images = new QLineEdit(this);
 
 	/*LAYOUT*/
 
 	QGridLayout* pLayout = new QGridLayout(this);
-
-	pLayout->addWidget( Rasterlist, 1, 0, 1, 3 );
-
+	
 	pLayout->addWidget( Video, 0, 0, 1, 3);
+
+	pLayout->addWidget( Dir, 1, 0, 1, 2 );
+	pLayout->addWidget(Browse, 1, 2, 1, 1);
+
 	pLayout->addWidget( Size, 2, 0, 1, 3);
+
+	pLayout->addWidget(num_images_text, 3, 0, 1, 1);
+	pLayout->addWidget(num_images, 3, 1, 1, 1);
+	pLayout->addWidget(NumImages,3,2,1,1);
 
 	pLayout->addWidget( x_out_text,4,0);
 	pLayout->addWidget( y_out_text,4,1);
@@ -441,6 +475,7 @@ DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(P
 
 	pLayout->addWidget(Cancel, 6, 2,1,3);
 	pLayout->addWidget(Apply, 6, 0,1,1);
+
 
 	init();
 }
@@ -455,34 +490,38 @@ void DrizzleVideo_GUI::init()
 	//Initialize buttons
 	connect(Cancel, SIGNAL(clicked()), this, SLOT(reject()));
 	connect(Apply, SIGNAL(clicked()), this, SLOT(PerformDrizzle()));
-	connect(Rasterlist, SIGNAL(currentIndexChanged(int)), this, SLOT(updateInfo()));
-
-	//Get RasterElements
-	Service<ModelServices> Model;
-	RasterElements = Model->getElementNames("RasterElement");
-
-	for (unsigned int i = 0; i < RasterElements.size(); i++)
-	{
-		Rasterlist->insertItem(i, QString::fromStdString(RasterElements[i]));
-	}
-	Rasterlist->setMinimumWidth(Rasterlist->sizeHint().rwidth());
-	Rasterlist->setMaximumWidth(Rasterlist->sizeHint().rwidth());
-
-	const RasterDataDescriptor *Des1 = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(0),"",NULL)->getDataDescriptor());
-	const std::vector<DimensionDescriptor>& Rows = Des1->getRows();
-	const std::vector<DimensionDescriptor>& Columns = Des1->getColumns();
-	Size->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+	connect(Browse, SIGNAL(clicked()), this, SLOT(browse()));
+	connect(Dir, SIGNAL(textChanged(const QString &)), this, SLOT(updateInfo()));
 
 	this->layout()->setSizeConstraint( QLayout::SetFixedSize );
 }
 
-void DrizzleVideo_GUI::updateInfo(){
-	Service<ModelServices> Model;
-	//Get size information
-	const RasterDataDescriptor *Des = dynamic_cast<const RasterDataDescriptor*>(Model->getElement(RasterElements.at(Rasterlist->currentIndex()),"",NULL)->getDataDescriptor());
-	const std::vector<DimensionDescriptor>& Rows = Des->getRows();
-	const std::vector<DimensionDescriptor>& Columns = Des->getColumns();
-	Size->setText("Size:\t"+ QString::number(Columns.size()) + "x" + QString::number(Rows.size()));
+void DrizzleVideo_GUI::updateInfo()
+{
+	CvCapture* input_video = cvCreateFileCapture(Dir->text().toStdString().c_str());
+	if (input_video != NULL)
+	{
+		int frame_height = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_HEIGHT );
+		int frame_width = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_WIDTH );
+
+		Size->setText("Input frame size:\t"+ QString::number(frame_width) + "x" + QString::number(frame_height));
+
+		int number_of_frames = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_COUNT );
+
+		NumImages->setText(" / " +QString::number(number_of_frames));
+	}
+	else
+	{
+		Size->setText("Input frame size:");
+		NumImages->setText(" / ");
+	}
+}
+
+void DrizzleVideo_GUI::browse()
+{
+	fileName = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("Files (*.mp4)"));
+
+    Dir->setText(fileName);
 }
 
 void DrizzleVideo_GUI::closeGUI(){
@@ -490,15 +529,37 @@ void DrizzleVideo_GUI::closeGUI(){
 }
 
 bool DrizzleVideo_GUI::PerformDrizzle(){
+	Service<ModelServices> pModel;
 	StepResource pStep( "DrizzleVideo GUI", "app", "7743FFD5-C2DA-4AD5-B0F0-9D6AF2C01A86" );
-	CvCapture* input_video = cvCreateFileCapture("C:\\Users\\Tom\\Videos\\Jubileum\\lena.mp4");
+	ProgressResource pProgress("ProgressBar");
+
+	CvCapture* input_video = cvCreateFileCapture(Dir->text().toStdString().c_str());
 	if (input_video == NULL)
 	{
 		QMessageBox::critical( this, "Drizzle", "Video input failed'", "Back" );
 		pStep->finalize( Message::Failure, "No RasterElements found!" );
 		return false;
 	}
-	cvQueryFrame(input_video);
+
+	if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
+	{
+		pProgress->updateProgress("No output size specified.", 100, ERRORS);
+		return false;
+	}
+
+	if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
+	{
+		pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
+		return false;
+	}
+
+	if(num_images->text().isNull() || num_images->text().isEmpty())
+	{
+		pProgress->updateProgress("No number of frames specified.", 100, ERRORS);
+		return false;
+	}
+
+	static IplImage *frame = NULL, *frame1 = NULL, *frame1_1C = NULL;
 
 	CvSize frame_size;
 	frame_size.height = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_HEIGHT );
@@ -508,37 +569,210 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 
 	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_AVI_RATIO, 1. );
 
-	number_of_frames = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES );
+	number_of_frames = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_COUNT );
+
+	if(num_images->text().toInt() > number_of_frames)
+	{
+		pProgress->updateProgress("Too many input frames selected!", 100, ERRORS);
+		return false;
+	}
 
 	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES, 0. );
 
 	long current_frame = 0;
-	std::vector<Point2f> prev_frame_corners(4);
-	prev_frame_corners[0] = cvPoint(0,0);
-	prev_frame_corners[1] = cvPoint(0,frame_size.height);
-	prev_frame_corners[2] = cvPoint(frame_size.width,frame_size.height);
-	prev_frame_corners[3] = cvPoint(frame_size.width,0);
+
+	frame = cvQueryFrame(input_video);
 	
-	while(true)
+	if(&frame == NULL)
 	{
-		static IplImage *frame = NULL, *frame2_1C = NULL, *frame2 = NULL, *pyramid1 = NULL, *pyramid2 = NULL, *frame1 = NULL, *frame1_1C = NULL, *eig_image = NULL, *temp_image = NULL;
+		QMessageBox::critical( this, "Drizzle",  "Error: unable load frame.", "Back" );
+		pStep->finalize( Message::Failure,  "Error: unable load frame." );
+		return false;
+	}
 
-		cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES, current_frame );
+	std::vector<Point2f> prev_frame_corners(4);
+	std::vector<Point2f> start_frame_corners(4);
 
-		frame = cvQueryFrame( input_video );
-		if(frame == NULL)
+	start_frame_corners[0] = cvPoint(0,0);
+	start_frame_corners[1] = cvPoint(0,1);
+	start_frame_corners[2] = cvPoint(1,1);
+	start_frame_corners[3] = cvPoint(1,0);
+
+	ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement("DrizzleVideo_output", y_out->text().toDouble(), x_out->text().toDouble(), INT1UBYTE));
+	ModelResource<RasterElement> pFrameCube(RasterUtilities::createRasterElement("temp_frame", frame_size.height, frame_size.width,  INT1UBYTE));
+
+	if (pResultCube.get() == NULL || pFrameCube.get() == NULL){
+		std::string msg = "A raster cube could not be created.";
+		pStep->finalize(Message::Failure, msg);
+		return false;
+	}
+
+	FactoryResource<DataRequest> pResultRequest;
+	DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
+	RasterDataDescriptor* pDestDesc = static_cast<RasterDataDescriptor*>(pResultCube->getDataDescriptor());
+
+	RasterDataDescriptor* pFrameDesc = static_cast<RasterDataDescriptor*>(pFrameCube->getDataDescriptor());
+
+	std::list<GcpPoint> pNewGcpList(4);
+
+	std::list<GcpPoint>::iterator it = pNewGcpList.begin();
+	it->mPixel = *(new LocationType(0, 0));
+	it->mCoordinate = *(new LocationType(start_frame_corners[0].x, start_frame_corners[0].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(0, y_out->text().toDouble()));
+	it->mCoordinate = *(new LocationType(start_frame_corners[1].x, start_frame_corners[1].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(x_out->text().toDouble(), y_out->text().toDouble()));
+	it->mCoordinate = *(new LocationType(start_frame_corners[2].x, start_frame_corners[2].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(x_out->text().toDouble(), 0));
+	it->mCoordinate = *(new LocationType(start_frame_corners[3].x, start_frame_corners[3].y));
+	
+	GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
+	newGCPList->addPoints(pNewGcpList);
+
+	GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
+	pDestGeoDesc->setGeoreferencePlugInName("GCP Georeference");
+
+	Service<DesktopServices> pDesktop;
+
+	SpatialDataWindow* pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pResultCube->getName(), SPATIAL_DATA_WINDOW));
+
+	SpatialDataView* pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
+
+	const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
+	if (!plugInName.empty()){
+		ExecutableResource geoPlugIn(plugInName);
+		PlugInArgList& argList = geoPlugIn->getInArgList();
+		argList.setPlugInArgValue(Executable::DataElementArg(), pResultCube.get());
+		argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
+		argList.setPlugInArgValueLoose(Georeference::GcpListArg(), newGCPList);
+		argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
+		if (geoPlugIn->execute() == false)
 		{
-			QMessageBox::critical( this, "Drizzle",  "Error: unable load frame.", "Back" );
-			pStep->finalize( Message::Failure,  "Error: unable load frame." );
+			std::string message = "Could not georeference the data set.";
+			pProgress->updateProgress(message, 0, WARNING);
+
+			pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
+		}
+		else
+		{
+			geoPlugIn.release();
+			pStep->finalize(Message::Success);
+		}
+	}
+	else
+	{
+		std::string message = "A georeference plug-in is not available to georeference the data set.";
+		pProgress->updateProgress(message, 0, WARNING);
+		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
+	}
+
+	pView->setPrimaryRasterElement(pResultCube.get());
+	pView->createLayer(RASTER, pResultCube.get());
+	
+	it = pNewGcpList.begin();
+	it->mPixel = *(new LocationType(0, 0));
+	it->mCoordinate = *(new LocationType(start_frame_corners[0].x, start_frame_corners[0].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(0, frame_size.height));
+	it->mCoordinate = *(new LocationType(start_frame_corners[1].x, start_frame_corners[1].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(frame_size.width, frame_size.height));
+	it->mCoordinate = *(new LocationType(start_frame_corners[2].x, start_frame_corners[2].y));
+	std::advance(it, 1);
+	it->mPixel = *(new LocationType(frame_size.width, 0));
+	it->mCoordinate = *(new LocationType(start_frame_corners[3].x, start_frame_corners[3].y));
+
+	newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pFrameCube.get()));
+	newGCPList->addPoints(pNewGcpList);
+
+	GeoreferenceDescriptor *pFrameGeoDesc = pFrameDesc->getGeoreferenceDescriptor();
+	pFrameGeoDesc->setGeoreferencePlugInName("GCP Georeference");
+
+	pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pFrameCube->getName(), SPATIAL_DATA_WINDOW));
+
+	pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
+
+	if (!plugInName.empty()){
+		ExecutableResource geoPlugIn(plugInName);
+		PlugInArgList& argList = geoPlugIn->getInArgList();
+		argList.setPlugInArgValue(Executable::DataElementArg(), pFrameCube.get());
+		argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
+		argList.setPlugInArgValueLoose(Georeference::GcpListArg(), newGCPList);
+		argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
+		if (geoPlugIn->execute() == false)
+		{
+			std::string message = "Could not georeference the data set.";
+			pProgress->updateProgress(message, 0, WARNING);
+
+			pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
+		}
+		else
+		{
+			geoPlugIn.release();
+			pStep->finalize(Message::Success);
+		}
+	}
+	else
+	{
+		std::string message = "A georeference plug-in is not available to georeference the data set.";
+		pProgress->updateProgress(message, 0, WARNING);
+		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
+	}
+
+	pView->setPrimaryRasterElement(pFrameCube.get());
+	pView->createLayer(RASTER, pFrameCube.get());
+
+	std::vector<ModelResource<RasterElement>> rasters;
+	std::vector<DataAccessor> accessors;
+
+	FactoryResource<DataRequest> pFrameRequest;
+	DataAccessor pFrameAcc = pFrameCube->getDataAccessor(pFrameRequest.release());
+
+	allocateOnDemand( &frame1_1C, frame_size, IPL_DEPTH_8U, 1 );
+	cvConvertImage(frame, frame1_1C);
+	allocateOnDemand( &frame1, frame_size, IPL_DEPTH_8U, 3 );
+	cvConvertImage(frame, frame1);
+
+	pFrameAcc->toPixel(0,0);
+	for (unsigned int row = 0; row < pFrameDesc->getRowCount(); ++row){ 
+		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+		//pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
+		if (!pDestAcc.isValid())
+		{
+			std::string msg = "Unable to access the cube data.";
+			pStep->finalize(Message::Failure, msg);
+			pProgress->updateProgress(msg, 0, ERRORS);
 			return false;
 		}
 
+		for (unsigned int col = 0; col < pFrameDesc->getColumnCount(); ++col)
+		{
+			switchOnEncoding(pFrameDesc->getDataType(), IplImagetoRaster, pFrameAcc->getColumn(), frame1_1C->imageData[row*frame1_1C->widthStep+col]);
+			pFrameAcc->nextColumn();
+		}
+		pFrameAcc->nextRow();
+	}
+
+	rasters.push_back(pFrameCube);
+	accessors.push_back(pFrameAcc);
+
+	prev_frame_corners[0] = start_frame_corners[0];
+	prev_frame_corners[1] = start_frame_corners[1];
+	prev_frame_corners[2] = start_frame_corners[2];
+	prev_frame_corners[3] = start_frame_corners[3];
+
+	int counter = 1;
+	int num_frames = num_images->text().toInt();
+	while(counter < num_frames)
+	{
+		static IplImage *frame2_1C = NULL, *frame2 = NULL, *pyramid1 = NULL, *pyramid2 = NULL, *eig_image = NULL, *temp_image = NULL;
+
 		allocateOnDemand( &frame1_1C, frame_size, IPL_DEPTH_8U, 1 );
-
-		cvConvertImage(frame, frame1_1C, CV_CVTIMG_FLIP);
-
+		cvConvertImage(frame, frame1_1C);
 		allocateOnDemand( &frame1, frame_size, IPL_DEPTH_8U, 3 );
-		cvConvertImage(frame, frame1, CV_CVTIMG_FLIP);
+		cvConvertImage(frame, frame1);
 
 		frame = cvQueryFrame( input_video );
 		if (frame == NULL)
@@ -548,15 +782,15 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 			return false;
 		}
 		allocateOnDemand( &frame2_1C, frame_size, IPL_DEPTH_8U, 1 );
-		cvConvertImage(frame, frame2_1C, CV_CVTIMG_FLIP);
+		cvConvertImage(frame, frame2_1C);
 		allocateOnDemand( &frame2, frame_size, IPL_DEPTH_8U, 3 );
-		cvConvertImage(frame, frame2, CV_CVTIMG_FLIP);
-		
+		cvConvertImage(frame, frame2);
+
 		/* SURF */
 
 		std::vector< KeyPoint > frame1_features;
 		std::vector< KeyPoint >  frame2_features;
-		
+
 		int minHessian = 600;
 		SurfFeatureDetector detector(minHessian);
 
@@ -574,13 +808,13 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 		std::vector<DMatch> matches;
 
 		matcher.match(frame1_descriptors, frame2_descriptors, matches);
-		
+
 		double max_dist = 0; double min_dist = 100;
-		
+
 		for( int i = 0; i < frame1_descriptors.rows; i++ )
 		{ double dist = matches[i].distance;
-			if( dist < min_dist && dist != 0 ) min_dist = dist;
-			if( dist > max_dist ) max_dist = dist;
+		if( dist < min_dist && dist != 0 ) min_dist = dist;
+		if( dist > max_dist ) max_dist = dist;
 		}
 
 		std::vector< DMatch > good_matches;
@@ -606,293 +840,173 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 			frame1_matches.push_back( frame1_features[ good_matches[i].queryIdx ].pt );
 			frame2_matches.push_back( frame2_features[ good_matches[i].trainIdx ].pt );
 		}
-		
-		Mat H = findHomography( frame1_matches, frame2_matches, CV_RANSAC );
-		
+
+		Mat H = findHomography( frame2_matches, frame1_matches, CV_RANSAC );
+
+		H.at<double>(0,2)/=frame_size.width;
+		H.at<double>(1,2)/=frame_size.height;
+
 		//-- Get the corners from the frame_1
 		std::vector<Point2f> frame1_corners(4);
 		frame1_corners[0] = prev_frame_corners[0];
 		frame1_corners[1] = prev_frame_corners[1];
 		frame1_corners[2] = prev_frame_corners[2];
 		frame1_corners[3] = prev_frame_corners[3];
-		
+
 		std::vector<Point2f> frame2_corners(4);
 		perspectiveTransform( frame1_corners, frame2_corners, H);
 
 		//-- Draw lines between the corners
-		line( img_matches, frame2_corners[0] + Point2f( frame1_mat.cols, 0), frame2_corners[1] + Point2f( frame1_mat.cols, 0), Scalar(0, 255, 0), 4 );
-		line( img_matches, frame2_corners[1] + Point2f( frame1_mat.cols, 0), frame2_corners[2] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-		line( img_matches, frame2_corners[2] + Point2f( frame1_mat.cols, 0), frame2_corners[3] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-		line( img_matches, frame2_corners[3] + Point2f( frame1_mat.cols, 0), frame2_corners[0] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-		
-		imshow( "Location of frame1 in frame 2", img_matches );	
+		//line( img_matches, frame2_corners[0] + Point2f( frame1_mat.cols, 0), frame2_corners[1] + Point2f( frame1_mat.cols, 0), Scalar(0, 255, 0), 4 );
+		//line( img_matches, frame2_corners[1] + Point2f( frame1_mat.cols, 0), frame2_corners[2] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
+		//line( img_matches, frame2_corners[2] + Point2f( frame1_mat.cols, 0), frame2_corners[3] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
+		//line( img_matches, frame2_corners[3] + Point2f( frame1_mat.cols, 0), frame2_corners[0] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
 
-		pStep->addProperty("tlx",frame2_corners[0].x);
+		//imshow( "Location of frame1 in frame 2", img_matches );	
+
+		/*pStep->addProperty("tlx",frame2_corners[0].x);
 		pStep->addProperty("tly",frame2_corners[0].y);
 		pStep->addProperty("blx",frame2_corners[1].x);
 		pStep->addProperty("bly",frame2_corners[1].y);
 		pStep->addProperty("brx",frame2_corners[2].x);
 		pStep->addProperty("bry",frame2_corners[2].y);
 		pStep->addProperty("trx",frame2_corners[3].x);
-		pStep->addProperty("try",frame2_corners[3].y);
+		pStep->addProperty("try",frame2_corners[3].y);*/
 
 		//cvShowImage("Frame1", frame1);
 		//cvShowImage("Frame2", frame2);
+
+		std::string name("temp_frame_" + std::to_string(static_cast<long long>(counter)));
+		ModelResource<RasterElement> pTempCube(RasterUtilities::createRasterElement(name, frame_size.height, frame_size.width, INT1UBYTE));
+		pFrameCube = pTempCube;
+
+		if (pFrameCube.get() == NULL){
+			std::string msg = "A raster cube could not be created.";
+			pProgress->updateProgress(msg, 0, WARNING);
+			pStep->finalize(Message::Failure, msg);
+			return false;
+		}
+
+		pFrameDesc = static_cast<RasterDataDescriptor*>(pFrameCube->getDataDescriptor());
+
+		it = pNewGcpList.begin();
+		it->mPixel = *(new LocationType(0, 0));
+		it->mCoordinate = *(new LocationType(frame2_corners[0].x, frame2_corners[0].y));
+		std::advance(it, 1);
+		it->mPixel = *(new LocationType(0, frame_size.height));
+		it->mCoordinate = *(new LocationType(frame2_corners[1].x, frame2_corners[1].y));
+		std::advance(it, 1);
+		it->mPixel = *(new LocationType(frame_size.width, frame_size.height));
+		it->mCoordinate = *(new LocationType(frame2_corners[2].x, frame2_corners[2].y));
+		std::advance(it, 1);
+		it->mPixel = *(new LocationType(frame_size.width, 0));
+		it->mCoordinate = *(new LocationType(frame2_corners[3].x, frame2_corners[3].y));
 		
+		newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pFrameCube.get()));
+		newGCPList->addPoints(pNewGcpList);
+
+		pFrameGeoDesc = pFrameDesc->getGeoreferenceDescriptor();
+		pFrameGeoDesc->setGeoreferencePlugInName("GCP Georeference");
+
+		if (!plugInName.empty()){
+		ExecutableResource geoPlugIn(plugInName);
+		PlugInArgList& argList = geoPlugIn->getInArgList();
+		argList.setPlugInArgValue(Executable::DataElementArg(), pFrameCube.get());
+		argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
+		argList.setPlugInArgValueLoose(Georeference::GcpListArg(), newGCPList);
+		argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
+			if (geoPlugIn->execute() == false)
+			{
+				std::string message = "Could not georeference the data set.";
+				pProgress->updateProgress(message, 0, WARNING);
+
+				pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
+			}
+			else
+			{
+				geoPlugIn.release();
+				pStep->finalize(Message::Success);
+			}
+		}
+		else
+		{
+			std::string message = "A georeference plug-in is not available to georeference the data set.";
+			pProgress->updateProgress(message, 0, WARNING);
+			pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
+		}
+
+		FactoryResource<DataRequest> pFrameRequest;
+		pFrameAcc = pFrameCube->getDataAccessor(pFrameRequest.release());
+
+		pFrameAcc->toPixel(0,0);
+		for (unsigned int row = 0; row < pFrameDesc->getRowCount(); ++row){ 
+			//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+			//pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
+			if (!pFrameAcc.isValid())
+			{
+				std::string msg = "Unable to access the cube data.";
+				pStep->finalize(Message::Failure, msg);
+				pProgress->updateProgress(msg, 0, ERRORS);
+				return false;
+			}
+
+			for (unsigned int col = 0; col < pFrameDesc->getColumnCount(); ++col)
+			{
+				switchOnEncoding(pFrameDesc->getDataType(), IplImagetoRaster, pFrameAcc->getColumn(), frame2_1C->imageData[row*frame2_1C->widthStep+col]);
+				
+				pFrameAcc->nextColumn();
+			}
+			pFrameAcc->nextRow();
+		}
+
+		rasters.push_back(pFrameCube);
+		accessors.push_back(pFrameAcc);
+
 		prev_frame_corners[0] = frame2_corners[0];
 		prev_frame_corners[1] = frame2_corners[1];
 		prev_frame_corners[2] = frame2_corners[2];
 		prev_frame_corners[3] = frame2_corners[3];
 
-		int key_pressed;
-		key_pressed = cvWaitKey(0);
-		current_frame++;
-		
-		if (current_frame < 0) current_frame = 0;
-		if (current_frame >= number_of_frames - 1) current_frame = number_of_frames - 2;
+		counter++;
 	}
 
-	//Service<ModelServices> pModel;
-	//StepResource pStep("Drizzle", "app", "4539C009-F756-41A4-A94D-9867C0FF3B87");
-	//ProgressResource pProgress("ProgressBar");
-
-	//RasterElement *image1 =  dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(Rasterlist1->currentIndex()),"",NULL ));
-	//std::vector<RasterElement*> images;
-
-	//for (int i=0; i < RasterElements.size();i++){
-	//	if((Rasterlist2->item(i)->checkState())){
-	//		if(QString::fromStdString(RasterElements[Rasterlist1->currentIndex()]) == Rasterlist2->item(i)->text()){
-	//			pProgress->updateProgress("Can't select the same image twice.", 100, ERRORS);
-	//			return false;
-	//		}
-	//		else{
-	//			images.push_back(dynamic_cast<RasterElement*>(pModel->getElement(RasterElements.at(i),"",NULL )));
-	//		}
-	//	}
-	//}
-
-	//if (image1 == NULL || images.size() == 0)
-	//{				
-	//	pProgress->updateProgress("Image import failed", 100, ERRORS);
-	//	return false;	
-	//}
-	//pProgress->updateProgress("Image import succesfull", 0, NORMAL);
-
-	//RasterDataDescriptor* pDesc1 = static_cast<RasterDataDescriptor*>(image1->getDataDescriptor());
-
-	//if (pDesc1->getDataType() == INT4SCOMPLEX || pDesc1->getDataType() == FLT8COMPLEX)
-	//{
-	//	std::string msg = "Drizzle cannot be performed on complex types.";
-	//	pStep->finalize(Message::Failure, msg);
-	//	return false;
-	//}
-
-	//std::vector<RasterDataDescriptor*> pDesc;
-
-	//for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
-
-	//	if(!image1->isGeoreferenced() || !(*it)->isGeoreferenced()){
-	//		pProgress->updateProgress("Images are not georeferenced", 100, ERRORS);
-	//		return false;	
-	//	}
-
-	//	if ((static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == INT4SCOMPLEX || (static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()))->getDataType() == FLT8COMPLEX){
-	//		std::string msg = "Drizzle cannot be performed on complex types.";
-	//		pStep->finalize(Message::Failure, msg);
-	//		return false;
-	//	}
-	//	else{
-	//		pDesc.push_back(static_cast<RasterDataDescriptor*>((*it)->getDataDescriptor()));
-	//	}
-	//}
-
-	//FactoryResource<DataRequest> pRequest1;
-
-	//DataAccessor pSrcAcc1 = image1->getDataAccessor(pRequest1.release());
-	//std::vector<DataAccessor> pSrcAcc;
-	//
-	//for (std::vector<RasterElement*>::iterator it = images.begin(); it != images.end(); ++it){
-	//	FactoryResource<DataRequest> pRequest;
-	//	pSrcAcc.push_back((*it)->getDataAccessor(pRequest.release()));
-	//}
-
-	//if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
-	//{
-	//	pProgress->updateProgress("No output size specified.", 100, ERRORS);
-	//	return false;
-	//}
-
-	//if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
-	//{
-	//	pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
-	//	return false;
-	//}
-
-	//ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement(image1->getName() + "_Drizzled", y_out->text().toDouble(), x_out->text().toDouble(), pDesc1->getDataType()));
-
-	//if (pResultCube.get() == NULL){
-	//	std::string msg = "A raster cube could not be created.";
-	//	pStep->finalize(Message::Failure, msg);
-	//	return false;
-	//}
-
-	//FactoryResource<DataRequest> pResultRequest;
-	//pResultRequest->setWritable(true);
-	//DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
-	//RasterDataDescriptor* pDestDesc = static_cast<RasterDataDescriptor*>(pResultCube->getDataDescriptor());
-
-	///* GET GCPs OF INPUT IMAGE */
-	//GcpList * GCPs = NULL;		//New GCPList
-
-	//std::vector<DataElement*> pGcpLists = pModel->getElements(pSrcAcc1->getAssociatedRasterElement(), TypeConverter::toString<GcpList>());		//Get GCPLists of input image
-
-	//if (!pGcpLists.empty())
-	//{
-	//	QStringList aoiNames("<none>");
-	//	for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
-	//	{
-	//		aoiNames << QString::fromStdString((*it)->getName());
-	//	}
-	//	QString aoi = QInputDialog::getItem(Service<DesktopServices>()->getMainWidget(),
-	//		"Select a GCP List", "Select a GCP List for processing", aoiNames);
-
-	//	if (aoi != "<none>")
-	//	{
-	//		std::string strAoi = aoi.toStdString();
-	//		for (std::vector<DataElement*>::iterator it = pGcpLists.begin(); it != pGcpLists.end(); ++it)
-	//		{
-	//			if ((*it)->getName() == strAoi)
-	//			{
-	//				GCPs = static_cast<GcpList*>(*it);
-	//				break;
-	//			}
-	//		}
-	//		if (GCPs == NULL)
-	//		{
-	//			std::string msg = "Invalid GCPList.";
-	//			pProgress->updateProgress(msg, 0, ERRORS);
-	//			return false;
-	//		}
-	//	}
-	//	else
-	//	{
-	//		std::string msg = "A set of GCPs must be specified.";
-	//		if (pProgress.get() != NULL)
-	//		{
-	//			pProgress->updateProgress(msg, 0, ERRORS);
-	//		}
-	//		return false;
-	//	}
-	//}
-
-	///*Compensate for increase in resolution of output image */
-	//std::list<GcpPoint> pNewGcpList = GCPs->getSelectedPoints();
-
-	//for (std::list<GcpPoint>::iterator it = (pNewGcpList.begin()); it != pNewGcpList.end(); ++it)
-	//{
-	//	(*it).mPixel.mX *= (x_out->text().toDouble() / pDesc1->getColumnCount());
-	//	(*it).mPixel.mY *= (y_out->text().toDouble() / pDesc1->getRowCount());
-	//}
-
-	//GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
-	//newGCPList->addPoints(pNewGcpList);
-
-	//pDestDesc->setGeoreferenceDescriptor(pDesc1->getGeoreferenceDescriptor());
-	//GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
-	///*pDestDesc->getGeoreferenceDescriptor()->setLayerName("GEO_RESULT");
-	//pDestDesc->getGeoreferenceDescriptor()->setCreateLayer(true);
-	//pDestDesc->getGeoreferenceDescriptor()->setDisplayLayer(true);
-	//pDestDesc->getGeoreferenceDescriptor()->setSettingAutoGeoreference(true);*/
-
-	//Service<DesktopServices> pDesktop;
-
-	//SpatialDataWindow* pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pResultCube->getName(), SPATIAL_DATA_WINDOW));
-
-	//SpatialDataView* pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
-	//if (pView == NULL){
-	//	std::string msg = "Unable to create view.";
-	//	pStep->finalize(Message::Failure, msg);
-	//	pProgress->updateProgress(msg, 0, ERRORS);
-	//	return false;
-	//}
-
-	//const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
-	//if (!plugInName.empty()){
-	//	ExecutableResource geoPlugIn(plugInName);
-	//	PlugInArgList& argList = geoPlugIn->getInArgList();
-	//	argList.setPlugInArgValue(Executable::DataElementArg(), pResultCube.get());
-	//	argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
-	//	argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
-	//	if (geoPlugIn->execute() == false)
-	//	{
-	//		std::string message = "Could not georeference the data set.";
-	//		pProgress->updateProgress(message, 0, WARNING);
-
-	//		pStep->addMessage(message, "app", "A8050A4B-824A-4E60-88E5-729367DEEAD0");
-	//	}
-	//	else
-	//	{
-	//		geoPlugIn.release();
-	//		pStep->finalize(Message::Success);
-	//	}
-	//}
-	//else
-	//{
-	//	std::string message = "A georeference plug-in is not available to georeference the data set.";
-	//	pProgress->updateProgress(message, 0, WARNING);
-	//	pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
-	//}
-
+	//Drizzle images onto destination image.
+	double num_overlap_images;
 	//bool overlapped = false;
-	//int num_overlap_images;
-	//double drop = dropsize->text().toDouble();
+	double drop = dropsize->text().toDouble();
+	//Reset destination image to top left pixel.
+	pDestAcc->toPixel(0,0);
+	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
+		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
+		pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
+		if (!pDestAcc.isValid())
+		{
+			std::string msg = "Unable to access the cube data.";
+			pStep->finalize(Message::Failure, msg);
+			pProgress->updateProgress(msg, 0, ERRORS);
+			return false;
+		}
 
-	////Drizzle images onto destination image.
-	//
-	//	//Reset destination image to top left pixel.
-	//	pDestAcc->toPixel(0,0);
-	//	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-	//		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
-	//		pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
-	//		if (!pDestAcc.isValid())
-	//		{
-	//			std::string msg = "Unable to access the cube data.";
-	//			pStep->finalize(Message::Failure, msg);
-	//			pProgress->updateProgress(msg, 0, ERRORS);
-	//			return false;
-	//		}
+		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
+		{
+			//switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, accessors[0], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
+			num_overlap_images=0.0;
+			for (int i=0; i<rasters.size();i++){
+				//overlapped=false;
+				switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, accessors[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &num_overlap_images);
+				//if(overlapped) num_overlap_images++;
+			}
+			//switchOnEncoding(pDestDesc->getDataType(), DivideVideo, pDestAcc->getColumn(), num_overlap_images);
+			pDestAcc->nextColumn();
+		}
+		pDestAcc->nextRow();
+	}
+	rasters[0].release();
+	pResultCube.release();
 
-	//		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
-	//		{
-	//			switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, pSrcAcc1, row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
-	//			num_overlap_images=1;
-	//			for (int i=0; i<images.size();i++){
-	//				overlapped=false;
-	//				switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, pSrcAcc[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
-	//				if(overlapped) num_overlap_images++;
-	//			}
-	//			switchOnEncoding(pDestDesc->getDataType(), DivideVideo, pDestAcc->getColumn(), num_overlap_images);
-	//			pDestAcc->nextColumn();
-	//		}
-	//		pDestAcc->nextRow();
-	//	}
-
-	//images.clear();
-	//pDesc.clear();
-	//pSrcAcc.clear();
-	//pGcpLists.clear();
-
-	//pView->setPrimaryRasterElement(pResultCube.get());
-	//pView->createLayer(RASTER, pResultCube.get());
-
-	//pView->createLayer(GCP_LAYER,newGCPList,"Corner Coordinates");
-
-	//pResultCube.release();
-
-	//pStep->finalize();
-	//pProgress->updateProgress("Done", 100, NORMAL);
-	//this->accept();
-	//this->finished(1);	
-	pStep->finalize(Message::Success);
+	pStep->finalize();
+	pProgress->updateProgress("Done", 100, NORMAL);
+	this->accept();
+	this->finished(1);	
 	return true;
 }

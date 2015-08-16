@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'DrizzleVideo_GUI.h'
 **
-** Created: Fri 7. Aug 19:45:51 2015
+** Created: Sun 16. Aug 16:12:59 2015
 **      by: The Qt Meta Object Compiler version 62 (Qt 4.7.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_DrizzleVideo_GUI[] = {
        5,       // revision
        0,       // classname
        0,    0, // classinfo
-       3,   14, // methods
+       4,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -34,13 +34,14 @@ static const uint qt_meta_data_DrizzleVideo_GUI[] = {
       18,   17,   17,   17, 0x0a,
       34,   17,   29,   17, 0x0a,
       51,   17,   17,   17, 0x0a,
+      60,   17,   17,   17, 0x0a,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_DrizzleVideo_GUI[] = {
     "DrizzleVideo_GUI\0\0closeGUI()\0bool\0"
-    "PerformDrizzle()\0updateInfo()\0"
+    "PerformDrizzle()\0browse()\0updateInfo()\0"
 };
 
 const QMetaObject DrizzleVideo_GUI::staticMetaObject = {
@@ -75,10 +76,11 @@ int DrizzleVideo_GUI::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
         case 0: closeGUI(); break;
         case 1: { bool _r = PerformDrizzle();
             if (_a[0]) *reinterpret_cast< bool*>(_a[0]) = _r; }  break;
-        case 2: updateInfo(); break;
+        case 2: browse(); break;
+        case 3: updateInfo(); break;
         default: ;
         }
-        _id -= 3;
+        _id -= 4;
     }
     return _id;
 }
