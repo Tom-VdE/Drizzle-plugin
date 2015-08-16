@@ -27,22 +27,29 @@ public:
 public slots:
 	void closeGUI();
 	bool PerformDrizzle();
+	void browse();
 	void updateInfo();
 private:
 	QLabel *Video;
 	QLabel *Size;
+	QLabel *NumImages;
 
 	QPushButton *Cancel;
 	QPushButton *Apply;
+	QPushButton *Browse;
 
-	QComboBox *Rasterlist;
+	QLineEdit *Dir;
 
 	QLabel *x_out_text;
 	QLabel *y_out_text;
 	QLabel *dropsize_text;
+	QLabel *num_images_text;
 	QLineEdit *x_out;
 	QLineEdit *y_out;
 	QLineEdit *dropsize;
+	QLineEdit *num_images;
+
+	QString fileName;
 
 	std::vector<std::string> RasterElements;
 
