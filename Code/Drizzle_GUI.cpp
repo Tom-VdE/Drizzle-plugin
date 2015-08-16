@@ -65,8 +65,9 @@ namespace
 
 		LocationType *tllt = new LocationType(0,0);
 		LocationType *bllt = new LocationType(0,rowSize);
-		LocationType *trlt = new LocationType(colSize,0);
 		LocationType *brlt = new LocationType(colSize,rowSize);
+		LocationType *trlt = new LocationType(colSize,0);
+		
 
 		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tllt);
 		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*bllt);
@@ -438,7 +439,7 @@ Drizzle_GUI::~Drizzle_GUI()
 }
 
 void Drizzle_GUI::init(){
-
+	
 	//Initialize buttons
 	connect(Cancel, SIGNAL(clicked()), this, SLOT(reject()));
 	connect(Apply, SIGNAL(clicked()), this, SLOT(PerformDrizzle()));
@@ -678,6 +679,7 @@ bool Drizzle_GUI::PerformDrizzle(){
 	}
 
 	const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
+	pStep->addProperty("PluginName", plugInName);
 	if (!plugInName.empty()){
 		ExecutableResource geoPlugIn(plugInName);
 		PlugInArgList& argList = geoPlugIn->getInArgList();
