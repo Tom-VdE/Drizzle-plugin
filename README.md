@@ -6,7 +6,7 @@ http://drizzle-for-opticks-gsoc2015.blogspot.com/
 
 To use plugin:
 - Install Opticks: http://opticks.org/confluence/display/opticks/Download
-- Download 'Drizzle.dll' from the folder 'plugin' on this repository or build
+- Download 'Drizzle.dll' from the folder 'Build' on this repository or build
 - Move 'Drizzle.dll' to the PlugIn folder of Opticks (%OPTICKS_DIR%\4.12.0\Plugins\)
 - Open Opticks and select the Drizzle plugin from the 'Image Enhancement' drop down menu
 
