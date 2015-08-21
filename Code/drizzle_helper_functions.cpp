@@ -1,52 +1,23 @@
-/*
+/********************************************//*
+* 
+* @file: drizzle_helper_functions.cpp
+*
 * The information in this file is
-* Copyright(c) 2015, Tom Van den Eynde
+* Copyright(c) 2015 Tom Van den Eynde
 * and is subject to the terms and conditions of the
 * GNU Lesser General Public License Version 2.1
-* The license text is available from
+* The license text is available from   
 * http://www.gnu.org/licenses/lgpl.html
-*/
+***********************************************/
 
 #include "LocationType.h"
 #include "drizzle_helper_functions.h"
 
-LocationType pivot;
 
-// returns -1 if a -> b -> c forms a counter-clockwise turn, +1 for a clockwise turn, 0 if they are collinear
-int drizzle_helper_functions::ccw(LocationType a, LocationType b, LocationType c) {
-	double area = (b.mX - a.mX) * (c.mY - a.mY) - (b.mY - a.mY) * (c.mX - a.mX);
-	if (area > 0)
-		return -1;
-	else if (area < 0)
-		return 1;
-	return 0;
-}
-
-//Returns square of Euclidean distance between two points
-double drizzle_helper_functions::distance(LocationType a, LocationType b)  {
-	double dx = a.mX - b.mX, dy = a.mY - b.mY;
-	return dx * dx + dy * dy;
-}
-
-//Used for sorting points according to polar order w.r.t the pivot
-bool drizzle_helper_functions::POLAR_ORDER(LocationType a, LocationType b)  {
-	int order = ccw(pivot, a, b);
-	if (order == 0)
-		return distance(pivot, a) < distance(pivot, b);
-	return (order == -1);
-}
-
-//Dot product for locationtypes
-inline double drizzle_helper_functions::dotprod(LocationType a, LocationType b){
-	return a.mX*b.mX + a.mY*b.mY;
-}
-
-//Cross product for locationtypes
 inline double drizzle_helper_functions::crossprod(LocationType a, LocationType b){
 	return a.mX*b.mY - a.mY*b.mX;
 }
 
-//Determines whether C lies on the left side of line determined by A->B
 int drizzle_helper_functions::left_of(LocationType a, LocationType b, LocationType c)
 {
 	LocationType tmp1 = b - a;

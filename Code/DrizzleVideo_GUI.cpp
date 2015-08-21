@@ -1,11 +1,14 @@
-/*
+/********************************************//*
+* 
+* @file: DrizzleVideo_GUI.cpp
+*
 * The information in this file is
-* Copyright(c) 2015, Tom Van den Eynde
+* Copyright(c) 2015 Tom Van den Eynde
 * and is subject to the terms and conditions of the
 * GNU Lesser General Public License Version 2.1
-* The license text is available from
+* The license text is available from   
 * http://www.gnu.org/licenses/lgpl.html
-*/
+***********************************************/
 
 #include "DataAccessor.h"
 #include "DataAccessorImpl.h"
@@ -72,29 +75,43 @@ using namespace cv;
 namespace
 {
 	template<typename T>
+	/**
+	* Function which performs the drizzling for one pixel of the destination image.
+	*
+	* @param pData Typename T to be divided.
+	* @param pDestAcc DataAccessor to the destination RasterElement.
+	* @param pSrcAcc DataAccessor to the source RasterElement.
+	* @param row Current row of the destination RasterElement.
+	* @param col Current column of the destination RasterElement.
+	* @param rowSize height of the destination RasterElement.
+	* @param colSize width of the destination RasterElement.
+	* @param drop Percentage of width and height of pixel of the source images which is taken into account (from 0 to 1).
+	* @param num_overlap_images Pointer to double which holds the number of source images overlapping with the destination pixel.
+	*/
 	void DrizzleVideo(T* pData, DataAccessor pDestAcc, DataAccessor pSrcAcc, unsigned int row, unsigned int col, unsigned int rowSize, unsigned int colSize, double drop, double* num_overlap_images)
 	{
-		std::vector<LocationType> ipoints;
+		std::vector<LocationType> ipoints;	//initialise vector holding point of interest
 
-		LocationType *tllt = new LocationType(0,0);
-		LocationType *bllt = new LocationType(0,rowSize);
-		LocationType *trlt = new LocationType(colSize,0);
-		LocationType *brlt = new LocationType(colSize,rowSize);
+		LocationType *tllt = new LocationType(0,0);					//top left pixel of destination image
+		LocationType *bllt = new LocationType(0,rowSize);			//bottom left pixel of destination image
+		LocationType *brlt = new LocationType(colSize,rowSize);		//bottom right pixel of destination image
+		LocationType *trlt = new LocationType(colSize,0);			//top right pixel of destination image
 
-		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tllt);
-		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*bllt);
-		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trlt);
-		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brlt);
+		LocationType desgeo1 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tllt);		//coordinates of top left pixel of destination image
+		LocationType desgeo2 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*bllt);		//coordinates of bottom left pixel of destination image
+		LocationType desgeo3 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trlt);		//coordinates of bottom right pixel of destination image
+		LocationType desgeo4 = pDestAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brlt);		//coordinates of top right pixel of destination image
 
-		double dtlx1 = desgeo1.mX;			//x coordinate of top left pixel
-		double dtly1 = desgeo1.mY;			//y coordinate of top left pixel
-		double dblx1 = desgeo2.mX;			//x coordinate of top right pixel
-		double dbly1 = desgeo2.mY;			//y coordinate of top right pixel
-		double dtrx1 = desgeo3.mX;			//x coordinate of bottom left pixel
-		double dtry1 = desgeo3.mY;			//y coordinate of bottom left pixel
-		double dbrx1 = desgeo4.mX;			//x coordinate of bottom right pixel
-		double dbry1 = desgeo4.mY;			//y coordinate of bottom right pixel
+		double dtlx1 = desgeo1.mX;			//x coordinate of top left pixel of destination image
+		double dtly1 = desgeo1.mY;			//y coordinate of top left pixel of destination image
+		double dblx1 = desgeo2.mX;			//x coordinate of top right pixel of destination image
+		double dbly1 = desgeo2.mY;			//y coordinate of top right pixel of destination image
+		double dtrx1 = desgeo3.mX;			//x coordinate of bottom left pixel of destination image
+		double dtry1 = desgeo3.mY;			//y coordinate of bottom left pixel of destination image
+		double dbrx1 = desgeo4.mX;			//x coordinate of bottom right pixel of destination image
+		double dbry1 = desgeo4.mY;			//y coordinate of bottom right pixel of destination image
 
+		//Delete temporary Locationtypes
 		delete tllt;
 		delete bllt;
 		delete trlt;
@@ -109,28 +126,14 @@ namespace
 		double ddrx1 = dbrx1 - dtrx1;		//difference in x coordinate over right side of image
 		double ddry1 = dbry1 - dtry1;		//difference in y coordinate over right side of image
 
-		/*double ddxv = (((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize);	//total difference in x coordinate in vertical direction
-		double ddxh = (((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize);	//total difference in x coorindate in horizontal direction
-		double ddyv = (((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize);	//total difference in y coorindate in vertical direction
-		double ddyh = (((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize);	//total difference in y coorindate in horizontal direction
-
-		double dptlx1 = dtlx1 + ddxv*double(col) + ddxh*double(row);					//top left x coordinate of pixel
-		double dptly1 = dtly1 + ddyv*double(col) + ddyh*double(row);					//top left y coordinate of pixel
-		double dptrx1 = dtlx1 + ddxv*double(col) + ddxh*double(row+1);					//top right x coordinate of pixel
-		double dptry1 = dtly1 + ddyv*double(col) + ddyh*double(row+1);					//top right y coordinate of pixel
-		double dpblx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row);					//bottom left x coordinate of pixel
-		double dpbly1 = dtly1 + ddyv*double(col+1) + ddyh*double(row);					//bottom left y coordinate of pixel
-		double dpbrx1 = dtlx1 + ddxv*double(col+1) + ddxh*double(row+1);				//bottom right x coordinate of pixel
-		double dpbry1 = dtly1 + ddyv*double(col+1) + ddyh*double(row+1);				//bottom right y coordinate of pixel*/
-
-		double dptlx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize))*double(col) + ((((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize))*double(row);					//top left x coordinate of pixel
-		double dptly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col) + ((((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize))*double(row);					//top left y coordinate of pixel
-		double dpblx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row+1) + ddtx1)/double(colSize))*double(col) + ((((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize))*double(row+1);				//top right x coordinate of pixel
-		double dpbly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row+1) + ddty1)/double(colSize))*double(col) + ((((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize))*double(row+1);				//top right y coordinate of pixel
-		double dptrx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize))*double(col+1) + ((((ddrx1-ddlx1)/colSize)*double(col+1) + ddlx1)/double(rowSize))*double(row);				//bottom left x coordinate of pixel
-		double dptry1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row);				//bottom left y coordinate of pixel
-		double dpbrx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row+1) + ddtx1)/double(colSize))*double(col+1) + ((((ddrx1-ddlx1)/colSize)*double(col+1) + ddlx1)/double(rowSize))*double(row+1);			//bottom right x coordinate of pixel
-		double dpbry1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row+1) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row+1);			//bottom right y coordinate of pixel*/
+		double dptlx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize))*double(col) + ((((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize))*double(row);					//top left x coordinate of destination pixel
+		double dptly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col) + ((((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize))*double(row);					//top left y coordinate of destination pixel
+		double dpblx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row+1) + ddtx1)/double(colSize))*double(col) + ((((ddrx1-ddlx1)/colSize)*double(col) + ddlx1)/double(rowSize))*double(row+1);				//top right x coordinate of destination pixel
+		double dpbly1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row+1) + ddty1)/double(colSize))*double(col) + ((((ddry1-ddly1)/colSize)*double(col) + ddly1)/double(rowSize))*double(row+1);				//top right y coordinate of destination pixel
+		double dptrx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row) + ddtx1)/double(colSize))*double(col+1) + ((((ddrx1-ddlx1)/colSize)*double(col+1) + ddlx1)/double(rowSize))*double(row);				//bottom left x coordinate of destination pixel
+		double dptry1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row);				//bottom left y coordinate of destination pixel
+		double dpbrx1 = dtlx1 + ((((ddbx1-ddtx1)/rowSize)*double(row+1) + ddtx1)/double(colSize))*double(col+1) + ((((ddrx1-ddlx1)/colSize)*double(col+1) + ddlx1)/double(rowSize))*double(row+1);			//bottom right x coordinate of destination pixel
+		double dpbry1 = dtly1 + ((((ddby1-ddty1)/rowSize)*double(row+1) + ddty1)/double(colSize))*double(col+1) + ((((ddry1-ddly1)/colSize)*double(col+1) + ddly1)/double(rowSize))*double(row+1);			//bottom right y coordinate of destination pixel
 
 		//Equations of four lines (top, bottom, left, right) for one pixel: Y = MX + C
 		double dtm = (dptly1 - dptry1)/(dptlx1 - dptrx1);
@@ -142,61 +145,64 @@ namespace
 		double drm = (dptry1 - dpbry1)/(dptrx1 - dpbrx1);
 		double drc = dpbry1 - drm*dpbrx1;
 
-		int srcrowSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size();
-		int srccolSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size();
+		int srcrowSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getRows().size();		//height of source image
+		int srccolSize = dynamic_cast<const RasterDataDescriptor*>(pSrcAcc->getAssociatedRasterElement()->getDataDescriptor())->getColumns().size();	//width of source image
 
-		LocationType *tlsrclt = new LocationType(dptlx1,dptly1);
-		LocationType *blsrclt = new LocationType(dpblx1,dpbly1);
-		LocationType *trsrclt = new LocationType(dptrx1,dptry1);
-		LocationType *brsrclt = new LocationType(dpbrx1,dpbry1);
+		LocationType *tlsrclt = new LocationType(dptlx1,dptly1);		//top left pixel of source image
+		LocationType *blsrclt = new LocationType(dpblx1,dpbly1);		//bottom left pixel of source image
+		LocationType *trsrclt = new LocationType(dptrx1,dptry1);		//top right pixel of source image
+		LocationType *brsrclt = new LocationType(dpbrx1,dpbry1);		//bottom right pixel of source image
 
-		double tlsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX : 0;
-		double tlsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY : 0;
-		double trsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX : 0;
-		double trsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY : 0;
-		double brsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX : 0;
-		double brsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY : 0;
-		double blsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX : 0;
-		double blsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY : 0;
+		double tlsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mX : 0;		//top left x coordinate of destination pixel wrt source image
+		double tlsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*tlsrclt).mY : 0;		//top left y coordinate of destination pixel wrt source image
+		double trsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mX : 0;		//top right x coordinate of destination pixel wrt source image
+		double trsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*trsrclt).mY : 0;		//top right y coordinate of destination pixel wrt source image
+		double brsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mX : 0;		//bottom right x coordinate of destination pixel wrt source image
+		double brsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*brsrclt).mY : 0;		//bottom right y coordinate of destination pixel wrt source image
+		double blsrccol = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mX : 0;		//bottom left x coordinate of destination pixel wrt source image
+		double blsrcrow = ((pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY) > 0) ? pSrcAcc->getAssociatedRasterElement()->convertGeocoordToPixel(*blsrclt).mY : 0;		//bottom left y coordinate of destination pixel wrt source image
 
+		//Delete temporary Locationtypes
 		delete tlsrclt;
 		delete blsrclt;
 		delete trsrclt;
 		delete brsrclt;
 
-		tlsrclt = new LocationType(0,0);
-		blsrclt = new LocationType(0,srcrowSize);
-		trsrclt = new LocationType(srccolSize,0);
-		brsrclt = new LocationType(srccolSize,srcrowSize);
+		tlsrclt = new LocationType(0,0);					//top left pixel of source image
+		blsrclt = new LocationType(0,srcrowSize);			//bottom left pixel of source image
+		trsrclt = new LocationType(srccolSize,0);			//top right pixel of source image
+		brsrclt = new LocationType(srccolSize,srcrowSize);	//bottom right pixel of source image
 
-		LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tlsrclt);
-		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*blsrclt);
-		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trsrclt);
-		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brsrclt);
+		LocationType geo1 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*tlsrclt);		//coordinates of top left pixel of source image
+		LocationType geo2 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*blsrclt);		//coordinates of bottom left pixel of source image
+		LocationType geo3 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*trsrclt);		//coordinates of top right pixel of source image
+		LocationType geo4 = pSrcAcc->getAssociatedRasterElement()->convertPixelToGeocoord(*brsrclt);		//coordinates of bottom right pixel of source image
 
+		//Delete temporary Locationtypes
 		delete tlsrclt;
 		delete blsrclt;
 		delete trsrclt;
 		delete brsrclt;
 
-		double tlx1 = geo1.mX;			//x coordinate of top left pixel
-		double tly1 = geo1.mY;			//y coordinate of top left pixel
-		double blx1 = geo2.mX;			//x coordinate of top right pixel
-		double bly1 = geo2.mY;			//y coordinate of top right pixel
-		double trx1 = geo3.mX;			//x coordinate of bottom left pixel
-		double try1 = geo3.mY;			//y coordinate of bottom left pixel
-		double brx1 = geo4.mX;			//x coordinate of bottom right pixel
-		double bry1 = geo4.mY;			//y coordinate of bottom right pixel
+		double tlx1 = geo1.mX;			//x coordinate of top left pixel of source image
+		double tly1 = geo1.mY;			//y coordinate of top left pixel of source image
+		double blx1 = geo2.mX;			//x coordinate of top right pixel of source image
+		double bly1 = geo2.mY;			//y coordinate of top right pixel of source image 
+		double trx1 = geo3.mX;			//x coordinate of bottom left pixel of source image 
+		double try1 = geo3.mY;			//y coordinate of bottom left pixel of source image 
+		double brx1 = geo4.mX;			//x coordinate of bottom right pixel of source image 
+		double bry1 = geo4.mY;			//y coordinate of bottom right pixel of source image 
 
-		double dtx1 = trx1 - tlx1;		//difference in x coordinate over top of image
-		double dty1 = try1 - tly1;		//difference in y coordinate over top of image
-		double dlx1 = blx1 - tlx1;		//difference in x coordinate over left side of image
-		double dly1 = bly1 - tly1;		//difference in y coordinate over left side of image
-		double dbx1 = brx1 - blx1;		//difference in x coordinate over bottom of image
-		double dby1 = bry1 - bly1;		//difference in y coordinate over bottom of image
-		double drx1 = brx1 - trx1;		//difference in x coordinate over right of image
-		double dry1 = bry1 - try1;		//difference in y coordinate over right of image
-
+		double dtx1 = trx1 - tlx1;		//difference in x coordinate over top of source image 
+		double dty1 = try1 - tly1;		//difference in y coordinate over top of source image
+		double dlx1 = blx1 - tlx1;		//difference in x coordinate over left side of source image
+		double dly1 = bly1 - tly1;		//difference in y coordinate over left side of source image
+		double dbx1 = brx1 - blx1;		//difference in x coordinate over bottom of source image
+		double dby1 = bry1 - bly1;		//difference in y coordinate over bottom of source image
+		double drx1 = brx1 - trx1;		//difference in x coordinate over right side of source image
+		double dry1 = bry1 - try1;		//difference in y coordinate over right side of source image
+		
+		//Get upper and lower bounds on searchable area for pixels of the source image
 		int rtlsrccol = int(std::floor(tlsrccol));
 		int rtlsrcrow = int(std::floor(tlsrcrow));
 		int rtrsrccol = int(std::floor(trsrccol));
@@ -206,55 +212,28 @@ namespace
 		int rblsrccol = int(std::ceil(blsrccol));
 		int rblsrcrow = int(std::floor(blsrcrow));
 
+		//Set indicator for whether current output pixel and input image overlapped to FALSE
 		bool overlapped = false;
+		//Set temporary output pixel value to zero
 		unsigned long temp = 0;
 
 		for(int srcrow = std::min(std::min(rtlsrcrow,rtrsrcrow),std::min(rblsrcrow,rbrsrcrow)); srcrow <= std::max(std::max(rtlsrcrow,rtrsrcrow),std::max(rblsrcrow,rbrsrcrow)); srcrow++){
 			for(int srccol = std::min(std::min(rtlsrccol,rtrsrccol),std::min(rblsrccol,rbrsrccol)); srccol <= std::max(std::max(rtlsrccol,rtrsrccol),std::max(rblsrccol,rbrsrccol)); srccol++){
 				if(srccol < srccolSize && srcrow < srcrowSize){ 
-					ipoints.clear();
-					/*double dxv = (((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize);	//total difference in x coordinate in vertical direction
-					double dxh = (((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize);	//total difference in x coorindate in horizontal direction
-					double dyv = (((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize);	//total difference in y coorindate in vertical direction
-					double dyh = (((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize);	//total difference in y coorindate in horizontal direction
-
-					(ptlx1,ptly1)	o-------------o (ptrx1,ptry1)
-					|			  |
-					|  one pixel  |
-					|			  |
-					|			  |
-					(pblx1,pbly1)	o-------------o (pbrx1,pbry1)
-
-					double ptlx1 = tlx1 + dxv*srccol + dxh*srcrow;					//top left x coordinate of pixel
-					double ptly1 = tly1 + dyv*srccol + dyh*srcrow;					//top left y coordinate of pixel
-					double ptrx1 = tlx1 + dxv*srccol + dxh*(srcrow+1);				//top right x coordinate of pixel
-					double ptry1 = tly1 + dyv*srccol + dyh*(srcrow+1);				//top right y coordinate of pixel
-					double pblx1 = tlx1 + dxv*(srccol+1) + dxh*srcrow;				//bottom left x coordinate of pixel
-					double pbly1 = tly1 + dyv*(srccol+1) + dyh*srcrow;				//bottom left y coordinate of pixel
-					double pbrx1 = tlx1 + dxv*(srccol+1) + dxh*(srcrow+1);			//bottom right x coordinate of pixel
-					double pbry1 = tly1 + dyv*(srccol+1) + dyh*(srcrow+1);			//bottom right y coordinate of pixel*/
-
-					/*double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow);					//top left x coordinate of pixel
-					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow);					//top left y coordinate of pixel
-					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol) + ((((drx1-dlx1)/srccolSize)*double(srccol) + dlx1)/double(srcrowSize))*double(srcrow+1);				//top right x coordinate of pixel
-					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol) + ((((dry1-dly1)/srccolSize)*double(srccol) + dly1)/double(srcrowSize))*double(srcrow+1);				//top right y coordinate of pixel
-					double ptrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow);				//bottom left x coordinate of pixel
-					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow);				//bottom left y coordinate of pixel
-					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1) + dtx1)/double(srccolSize))*double(srccol+1) + ((((drx1-dlx1)/srccolSize)*double(srccol+1) + dlx1)/double(srcrowSize))*double(srcrow+1);			//bottom right x coordinate of pixel
-					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1) + dty1)/double(srccolSize))*double(srccol+1) + ((((dry1-dly1)/srccolSize)*double(srccol+1) + dly1)/double(srcrowSize))*double(srcrow+1);			//bottom right y coordinate of pixel*/
+					ipoints.clear();		//Clear interest points vector
 
 					double ddrop = (1-drop)/2;
 
-					double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);					//top left x coordinate of pixel
-					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);					//top left y coordinate of pixel
-					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right x coordinate of pixel
-					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right y coordinate of pixel
-					double ptrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left x coordinate of pixel
-					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left y coordinate of pixel
-					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right x coordinate of pixel
-					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right y coordinate of pixel
+					double ptlx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);					//top left x coordinate of source pixel 
+					double ptly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);					//top left y coordinate of source pixel
+					double pblx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol + ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol + ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right x coordinate of source pixel
+					double pbly1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol + ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol + ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);				//top right y coordinate of source pixel
+					double ptrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow + ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left x coordinate of source pixel
+					double ptry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow + ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow + ddrop);				//bottom left y coordinate of source pixel
+					double pbrx1 = tlx1 + ((((dbx1-dtx1)/srcrowSize)*double(srcrow+1 - ddrop) + dtx1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((drx1-dlx1)/srccolSize)*double(srccol+1 - ddrop) + dlx1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right x coordinate of source pixel
+					double pbry1 = tly1 + ((((dby1-dty1)/srcrowSize)*double(srcrow+1 - ddrop) + dty1)/double(srccolSize))*double(srccol+1 - ddrop) + ((((dry1-dly1)/srccolSize)*double(srccol+1 - ddrop) + dly1)/double(srcrowSize))*double(srcrow+1 - ddrop);			//bottom right y coordinate of source pixel
 
-					//CHECK WHETHER INPUT AND OUTPUT PIXEL COULD OVERLAP
+					//Check whether input and output pixel can overlap
 					if((std::max(std::max(pbrx1,pblx1),std::max(ptrx1,ptlx1))>=std::min(std::min(dpbrx1,dpblx1),std::min(dptrx1,dptlx1)))
 						&& (std::min(std::min(pbrx1,pblx1),std::min(ptrx1,ptlx1))<=std::max(std::max(dpbrx1,dpblx1),std::max(dptrx1,dptlx1)))
 						&& (std::max(std::max(pbry1,pbly1),std::max(ptry1,ptly1))>=std::min(std::min(dpbry1,dpbly1),std::min(dptry1,dptly1)))
@@ -262,6 +241,7 @@ namespace
 					{
 						//SUTHERLAND-HODGMAN POLYGON CLIPPING
 
+						//Use of geographical positions -> limited resolution of double
 						/*std::vector<LocationType> subject;
 						subject.push_back(*(new LocationType(ptlx1,ptly1)));
 						subject.push_back(*(new LocationType(pblx1,pbly1)));
@@ -273,7 +253,7 @@ namespace
 						clip.push_back(*(new LocationType(dpbrx1,dpbry1)));
 						clip.push_back(*(new LocationType(dptrx1,dptry1)));*/
 
-						//Use relative positions wrt source image in stead of geographical positions due to limited resolution of double.
+						//Use relative positions wrt source image instead of geographical positions due to limited resolution of double.
 						std::vector<LocationType> subject;
 
 						LocationType *tlsubjectlt = new LocationType(srccol + ddrop,srcrow + ddrop);
@@ -297,12 +277,12 @@ namespace
 						clip.push_back(*blcliplt);
 						clip.push_back(*brcliplt);
 						clip.push_back(*trcliplt);
-
+						
 						std::vector<LocationType> p1;
 						std::vector<LocationType> tmp;
 
 						int dir = int(drizzle_helper_functions::left_of(clip[0], clip[1], clip[2]));
-
+						
 						drizzle_helper_functions::poly_edge_clip(subject, clip[clip.size()-1], clip[0], dir, &ipoints);
 
 						for (int i = 0; i < clip.size()-1; i++) {
@@ -321,22 +301,7 @@ namespace
 						tmp.clear();
 
 						if(ipoints.size() > 0){
-
-							//SORT IPOINTS TO A COUNTERCLOCKWISE DIRECTION
-							/*int leastY = 0;
-							for (int i = 0; i < ipoints.size(); i++){
-							if (ipoints[i].mY < ipoints[leastY].mY) leastY = i;
-							}
-
-							// Swap the pivot with the first point
-							LocationType temp = *(new LocationType(ipoints[0].mX, ipoints[0].mY));
-							ipoints[0] = ipoints[leastY];
-							ipoints[leastY] = temp;
-
-							pivot = ipoints[0];
-							std::sort(ipoints.begin(),ipoints.end(), POLAR_ORDER);*/
-
-							//CALCULATION OF AREA OF OVERLAP (given intersection points in counterclockwise direction):
+							//CALCULATION OF AREA OF OVERLAP
 							double s1 = 0;
 							double s2 = 0;
 							double area = 0;
@@ -353,14 +318,18 @@ namespace
 							//Total area for relative coordinate
 							//double totalarea = (((tlsrcrow*blsrcrow)+(blsrcrow*brsrccol)+(brsrcrow*trsrccol)+(trsrcrow*tlsrccol))-((tlsrccol*blsrcrow)+(blsrccol*brsrcrow)+(brsrccol*trsrcrow)+(trsrccol*tlsrcrow)))/2;
 
+							//Get source pixel value
 							pSrcAcc->toPixel(srcrow, srccol);
 							VERIFYNRV(pSrcAcc.isValid());
-
 							T srcpixel = *reinterpret_cast<T*>(pSrcAcc->getColumn());
-							//*pData += static_cast<T>(area*srcpixel);							
+
+							//Add weighted source pixel to temporary destination pixel
 							temp += area*srcpixel;
+
+							//Set overlapped true to be able to determine the number of overlapping images for each destination pixel
 							overlapped = true;
 
+							//Delete remainder of Locationtypes
 							delete tlsubjectlt;
 							delete blsubjectlt;
 							delete trsubjectlt;
@@ -380,11 +349,13 @@ namespace
 				}
 			}
 		}
+		//Divide output pixel value by total number of overlapping input images with that particular output pixel
 		if(*num_overlap_images!=0){
 			*pData = static_cast<T>(static_cast<double>(*pData) * (*num_overlap_images)/(*num_overlap_images+1));
 		}
 		*pData += static_cast<T>(temp / ((*num_overlap_images+1.0)));
 
+		//Determine number of overlapping images
 		if(overlapped) (*num_overlap_images)++;
 		//ipoints.clear();
 	}
@@ -393,21 +364,26 @@ namespace
 namespace
 {
 	template<typename T>
-	void DivideVideo(T* pData, int num_overlap_images)
-	{
-		*pData = static_cast<T>(*pData/num_overlap_images);
-	}
-};
-
-namespace
-{
-	template<typename T>
+	/**
+	* Function to copy one pixel of an IplImage to a pixel of a RasterElement
+	*
+	* @param pData Pixel of RasterElement
+	* @param frame_pixel Pixel of IplImage
+	*/
 	void IplImagetoRaster(T* pData, double frame_pixel)
 	{
 		*pData = static_cast<T>(frame_pixel);
 	}
 };
 
+/**
+* Function to allocate memory for an IplImage
+*
+* @param IplImage Allocated memory
+* @param CvSize Size of image
+* @param depth Depth of image
+* @param channels Numbers of channels of the image
+*/
 inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
 {
 	if ( *img != NULL )	return;
@@ -415,18 +391,18 @@ inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int
 	*img = cvCreateImage( size, depth, channels );
 	if ( *img == NULL )
 	{
-		fprintf(stderr, "Error: Couldn't allocate image.  Out of memory?\n");
-		exit(-1);
+		QMessageBox::critical(NULL, "Drizzle: Memory allocation", "Memory allocation failed", "Back" );
+		return;
 	}
 
 }
 
-DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(Parent)
+DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent): QDialog(Parent)
 {
 	this->setWindowTitle("Drizzle algorithm");
 	setModal(FALSE);
 
-	/* WIDGETS */
+	//WIDGETS
 	Apply = new QPushButton( "applyButton", this );
 	Apply->setText("Drizzle!");
 
@@ -451,7 +427,7 @@ DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(P
 	dropsize = new QLineEdit(this);
 	num_images = new QLineEdit(this);
 
-	/*LAYOUT*/
+	//LAYOUT
 
 	QGridLayout* pLayout = new QGridLayout(this);
 	
@@ -476,7 +452,7 @@ DrizzleVideo_GUI::DrizzleVideo_GUI(QWidget* Parent, const char* Name): QDialog(P
 	pLayout->addWidget(Cancel, 6, 2,1,3);
 	pLayout->addWidget(Apply, 6, 0,1,1);
 
-
+	//Call init() for the necessary initialisations
 	init();
 }
 
@@ -493,11 +469,13 @@ void DrizzleVideo_GUI::init()
 	connect(Browse, SIGNAL(clicked()), this, SLOT(browse()));
 	connect(Dir, SIGNAL(textChanged(const QString &)), this, SLOT(updateInfo()));
 
+	//Fix size of GUI
 	this->layout()->setSizeConstraint( QLayout::SetFixedSize );
 }
 
 void DrizzleVideo_GUI::updateInfo()
 {
+	//Update size and number of frames when input video changes
 	CvCapture* input_video = cvCreateFileCapture(Dir->text().toStdString().c_str());
 	if (input_video != NULL)
 	{
@@ -520,7 +498,6 @@ void DrizzleVideo_GUI::updateInfo()
 void DrizzleVideo_GUI::browse()
 {
 	fileName = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("Files (*.mp4)"));
-
     Dir->setText(fileName);
 }
 
@@ -533,88 +510,106 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 	StepResource pStep( "DrizzleVideo GUI", "app", "7743FFD5-C2DA-4AD5-B0F0-9D6AF2C01A86" );
 	ProgressResource pProgress("ProgressBar");
 
+	//Get input video from LineEdit
 	CvCapture* input_video = cvCreateFileCapture(Dir->text().toStdString().c_str());
+
+	//Check whether video input was succesfull
 	if (input_video == NULL)
 	{
 		QMessageBox::critical( this, "Drizzle", "Video input failed'", "Back" );
-		pStep->finalize( Message::Failure, "No RasterElements found!" );
+		pStep->finalize( Message::Failure, "Video input failed!" );
 		return false;
 	}
 
+	//Check whether output width and height are filled in
 	if(x_out->text().isNull() || y_out->text().isNull() || x_out->text().isEmpty() || y_out->text().isEmpty())
 	{
 		pProgress->updateProgress("No output size specified.", 100, ERRORS);
 		return false;
 	}
 
+	//Check whether dropsize is filled in and valid
 	if(dropsize->text().isNull() || dropsize->text().isEmpty() || dropsize->text().toDouble() < 0 || dropsize->text().toDouble() > 1)
 	{
 		pProgress->updateProgress("No valid dropsize specified.", 100, ERRORS);
 		return false;
 	}
 
+	//Check whether number of frames to be used is filled in
 	if(num_images->text().isNull() || num_images->text().isEmpty())
 	{
 		pProgress->updateProgress("No number of frames specified.", 100, ERRORS);
 		return false;
 	}
 
+	//New IplImage as buffer and for frame1
 	static IplImage *frame = NULL, *frame1 = NULL, *frame1_1C = NULL;
 
+	//Get size of frames
 	CvSize frame_size;
 	frame_size.height = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_HEIGHT );
 	frame_size.width = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_WIDTH );
 
+	//Get total number of frames in video
 	long number_of_frames;
-
 	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_AVI_RATIO, 1. );
-
 	number_of_frames = (int) cvGetCaptureProperty( input_video, CV_CAP_PROP_FRAME_COUNT );
 
+	//Check whether number of frames to be used is not larger than the total amount of frames
 	if(num_images->text().toInt() > number_of_frames)
 	{
 		pProgress->updateProgress("Too many input frames selected!", 100, ERRORS);
 		return false;
 	}
 
+	//Reset current frame to first
 	cvSetCaptureProperty( input_video, CV_CAP_PROP_POS_FRAMES, 0. );
-
 	long current_frame = 0;
 
+	//Get frame from input video
 	frame = cvQueryFrame(input_video);
 	
+	//Check whether getting frame was succesfull
 	if(&frame == NULL)
 	{
-		QMessageBox::critical( this, "Drizzle",  "Error: unable load frame.", "Back" );
-		pStep->finalize( Message::Failure,  "Error: unable load frame." );
+		QMessageBox::critical( this, "Drizzle",  "Error: unable to load frame.", "Back" );
+		pStep->finalize( Message::Failure,  "Error: unable to load frame." );
 		return false;
 	}
 
+	//Create new vectors containing corner coordinates of previous and first frame
 	std::vector<Point2f> prev_frame_corners(4);
 	std::vector<Point2f> start_frame_corners(4);
 
+	//Inialise vector containing corner coordinates of start frame to fake coordinates
 	start_frame_corners[0] = cvPoint(0,0);
 	start_frame_corners[1] = cvPoint(0,1);
 	start_frame_corners[2] = cvPoint(1,1);
 	start_frame_corners[3] = cvPoint(1,0);
 
+	//Create new RasterElement for output image and for current frame
 	ModelResource<RasterElement> pResultCube(RasterUtilities::createRasterElement("DrizzleVideo_output", y_out->text().toDouble(), x_out->text().toDouble(), INT1UBYTE));
 	ModelResource<RasterElement> pFrameCube(RasterUtilities::createRasterElement("temp_frame", frame_size.height, frame_size.width,  INT1UBYTE));
 
+	//Check whether creation of RasterElements was succesfull
 	if (pResultCube.get() == NULL || pFrameCube.get() == NULL){
 		std::string msg = "A raster cube could not be created.";
 		pStep->finalize(Message::Failure, msg);
 		return false;
 	}
 
+	//Get DataAccessor and RasterDataDescriptor of output RasterElement
 	FactoryResource<DataRequest> pResultRequest;
 	DataAccessor pDestAcc = pResultCube->getDataAccessor(pResultRequest.release());
 	RasterDataDescriptor* pDestDesc = static_cast<RasterDataDescriptor*>(pResultCube->getDataDescriptor());
 
+	//Get RasterDataDescriptor of frame RasterElement
 	RasterDataDescriptor* pFrameDesc = static_cast<RasterDataDescriptor*>(pFrameCube->getDataDescriptor());
 
+	//Create list containing corner coordinates
 	std::list<GcpPoint> pNewGcpList(4);
 
+	//Set corner coordinates of the output RasterElement
 	std::list<GcpPoint>::iterator it = pNewGcpList.begin();
 	it->mPixel = *(new LocationType(0, 0));
 	it->mCoordinate = *(new LocationType(start_frame_corners[0].x, start_frame_corners[0].y));
@@ -627,19 +622,28 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 	std::advance(it, 1);
 	it->mPixel = *(new LocationType(x_out->text().toDouble(), 0));
 	it->mCoordinate = *(new LocationType(start_frame_corners[3].x, start_frame_corners[3].y));
-	
 	GcpList* newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pResultCube.get()));
 	newGCPList->addPoints(pNewGcpList);
 
+	//Get GeoreferenceDescriptor of output RasterElement
 	GeoreferenceDescriptor *pDestGeoDesc = pDestDesc->getGeoreferenceDescriptor();
+	//Set GeoreferencePlugin to be used
 	pDestGeoDesc->setGeoreferencePlugInName("GCP Georeference");
 
+	//Create view
 	Service<DesktopServices> pDesktop;
-
 	SpatialDataWindow* pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pResultCube->getName(), SPATIAL_DATA_WINDOW));
-
 	SpatialDataView* pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
 
+	//Check whether creation of view was successfull
+	if (pView == NULL){
+		std::string msg = "Unable to create view.";
+		pStep->finalize(Message::Failure, msg);
+		pProgress->updateProgress(msg, 0, ERRORS);
+		return false;
+	}
+
+	//Georeference the output image using the Georeference Plugin
 	const std::string &plugInName = pDestGeoDesc->getGeoreferencePlugInName();
 	if (!plugInName.empty()){
 		ExecutableResource geoPlugIn(plugInName);
@@ -668,9 +672,11 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
 
+	//Output destination RasterElement
 	pView->setPrimaryRasterElement(pResultCube.get());
 	pView->createLayer(RASTER, pResultCube.get());
 	
+	//Set corner coordinates of the frame RasterElement
 	it = pNewGcpList.begin();
 	it->mPixel = *(new LocationType(0, 0));
 	it->mCoordinate = *(new LocationType(start_frame_corners[0].x, start_frame_corners[0].y));
@@ -683,24 +689,21 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 	std::advance(it, 1);
 	it->mPixel = *(new LocationType(frame_size.width, 0));
 	it->mCoordinate = *(new LocationType(start_frame_corners[3].x, start_frame_corners[3].y));
-
 	newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pFrameCube.get()));
 	newGCPList->addPoints(pNewGcpList);
 
+	//Get GeoreferenceDescriptor of frame RasterElement
 	GeoreferenceDescriptor *pFrameGeoDesc = pFrameDesc->getGeoreferenceDescriptor();
+	//Set GeoreferencePlugin to be used
 	pFrameGeoDesc->setGeoreferencePlugInName("GCP Georeference");
 
-	pWindow = static_cast<SpatialDataWindow*>(pDesktop->createWindow(pFrameCube->getName(), SPATIAL_DATA_WINDOW));
-
-	pView = (pWindow == NULL) ? NULL : pWindow->getSpatialDataView();
-
+	//Georeference the frame using the Georeference Plugin
 	if (!plugInName.empty()){
 		ExecutableResource geoPlugIn(plugInName);
 		PlugInArgList& argList = geoPlugIn->getInArgList();
 		argList.setPlugInArgValue(Executable::DataElementArg(), pFrameCube.get());
 		argList.setPlugInArgValue(Executable::ProgressArg(), pProgress.get());
 		argList.setPlugInArgValueLoose(Georeference::GcpListArg(), newGCPList);
-		argList.setPlugInArgValueLoose(Executable::ViewArg(), pView);
 		if (geoPlugIn->execute() == false)
 		{
 			std::string message = "Could not georeference the data set.";
@@ -721,24 +724,24 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 		pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 	}
 
-	pView->setPrimaryRasterElement(pFrameCube.get());
-	pView->createLayer(RASTER, pFrameCube.get());
-
+	//Create vectors containing RasterElements and DataAccessors for all frames of video
 	std::vector<ModelResource<RasterElement>> rasters;
 	std::vector<DataAccessor> accessors;
 
+	//Get DataAccessor of frame RasterElement
 	FactoryResource<DataRequest> pFrameRequest;
 	DataAccessor pFrameAcc = pFrameCube->getDataAccessor(pFrameRequest.release());
 
+	//Copy frame to gray scale and color IplImages
 	allocateOnDemand( &frame1_1C, frame_size, IPL_DEPTH_8U, 1 );
 	cvConvertImage(frame, frame1_1C);
 	allocateOnDemand( &frame1, frame_size, IPL_DEPTH_8U, 3 );
 	cvConvertImage(frame, frame1);
 
+	//Set frame RasterElement to top left pixel.
 	pFrameAcc->toPixel(0,0);
+	//Copy IplImage to RasterElement
 	for (unsigned int row = 0; row < pFrameDesc->getRowCount(); ++row){ 
-		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
-		//pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
 		if (!pDestAcc.isValid())
 		{
 			std::string msg = "Unable to access the cube data.";
@@ -755,39 +758,50 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 		pFrameAcc->nextRow();
 	}
 
+	//Add RasterElement and DataAccessor of first frame to vectors
 	rasters.push_back(pFrameCube);
 	accessors.push_back(pFrameAcc);
 
+	//Initialise previous frame corners as the start frame corners
 	prev_frame_corners[0] = start_frame_corners[0];
 	prev_frame_corners[1] = start_frame_corners[1];
 	prev_frame_corners[2] = start_frame_corners[2];
 	prev_frame_corners[3] = start_frame_corners[3];
 
+	//Set frame counter to one (one frame is already processed)
 	int counter = 1;
+	//Get number of frames to be used
 	int num_frames = num_images->text().toInt();
+
 	while(counter < num_frames)
 	{
-		static IplImage *frame2_1C = NULL, *frame2 = NULL, *pyramid1 = NULL, *pyramid2 = NULL, *eig_image = NULL, *temp_image = NULL;
+		//New IplImage  for frame2
+		static IplImage *frame2_1C = NULL, *frame2 = NULL;
 
+		//Copy previous frame to gray scale and color IplImages (frame1)
 		allocateOnDemand( &frame1_1C, frame_size, IPL_DEPTH_8U, 1 );
 		cvConvertImage(frame, frame1_1C);
 		allocateOnDemand( &frame1, frame_size, IPL_DEPTH_8U, 3 );
 		cvConvertImage(frame, frame1);
 
-		frame = cvQueryFrame( input_video );
-		if (frame == NULL)
+		//Get frame from input video
+		frame = cvQueryFrame(input_video);
+	
+		//Check whether getting frame was succesfull
+		if(&frame == NULL)
 		{
-			QMessageBox::critical( this, "Drizzle", "Error: unable load frame.", "Back" );
-			pStep->finalize( Message::Failure, "Error: unable load frame." );
+			QMessageBox::critical( this, "Drizzle", "Error: unable to load frame.", "Back" );
+			pStep->finalize( Message::Failure, "Error: unable to load frame." );
 			return false;
 		}
+
+		//Copy current frame to gray scale and color IplImages (frame2)
 		allocateOnDemand( &frame2_1C, frame_size, IPL_DEPTH_8U, 1 );
 		cvConvertImage(frame, frame2_1C);
 		allocateOnDemand( &frame2, frame_size, IPL_DEPTH_8U, 3 );
 		cvConvertImage(frame, frame2);
 
-		/* SURF */
-
+		//SURF DETECTION AND DESCRIPTION
 		std::vector< KeyPoint > frame1_features;
 		std::vector< KeyPoint >  frame2_features;
 
@@ -836,50 +850,34 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 
 		for( int i = 0; i < good_matches.size(); i++ )
 		{
-			// Only keypoint from good matches
 			frame1_matches.push_back( frame1_features[ good_matches[i].queryIdx ].pt );
 			frame2_matches.push_back( frame2_features[ good_matches[i].trainIdx ].pt );
 		}
 
+		//Determine transformation matrix between matches
 		Mat H = findHomography( frame2_matches, frame1_matches, CV_RANSAC );
 
+		//Compensate for the difference between frame size and frame coordinates (width in pixel != width in coordinates)
 		H.at<double>(0,2)/=frame_size.width;
 		H.at<double>(1,2)/=frame_size.height;
 
-		//-- Get the corners from the frame_1
+		// Get the corners from the previous frame
 		std::vector<Point2f> frame1_corners(4);
 		frame1_corners[0] = prev_frame_corners[0];
 		frame1_corners[1] = prev_frame_corners[1];
 		frame1_corners[2] = prev_frame_corners[2];
 		frame1_corners[3] = prev_frame_corners[3];
 
+		//Get the corners of the current frame via the transformation matrix determined by SURF
 		std::vector<Point2f> frame2_corners(4);
 		perspectiveTransform( frame1_corners, frame2_corners, H);
 
-		//-- Draw lines between the corners
-		//line( img_matches, frame2_corners[0] + Point2f( frame1_mat.cols, 0), frame2_corners[1] + Point2f( frame1_mat.cols, 0), Scalar(0, 255, 0), 4 );
-		//line( img_matches, frame2_corners[1] + Point2f( frame1_mat.cols, 0), frame2_corners[2] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-		//line( img_matches, frame2_corners[2] + Point2f( frame1_mat.cols, 0), frame2_corners[3] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-		//line( img_matches, frame2_corners[3] + Point2f( frame1_mat.cols, 0), frame2_corners[0] + Point2f( frame1_mat.cols, 0), Scalar( 0, 255, 0), 4 );
-
-		//imshow( "Location of frame1 in frame 2", img_matches );	
-
-		/*pStep->addProperty("tlx",frame2_corners[0].x);
-		pStep->addProperty("tly",frame2_corners[0].y);
-		pStep->addProperty("blx",frame2_corners[1].x);
-		pStep->addProperty("bly",frame2_corners[1].y);
-		pStep->addProperty("brx",frame2_corners[2].x);
-		pStep->addProperty("bry",frame2_corners[2].y);
-		pStep->addProperty("trx",frame2_corners[3].x);
-		pStep->addProperty("try",frame2_corners[3].y);*/
-
-		//cvShowImage("Frame1", frame1);
-		//cvShowImage("Frame2", frame2);
-
+		//Create new RasterElement for current frame
 		std::string name("temp_frame_" + std::to_string(static_cast<long long>(counter)));
 		ModelResource<RasterElement> pTempCube(RasterUtilities::createRasterElement(name, frame_size.height, frame_size.width, INT1UBYTE));
 		pFrameCube = pTempCube;
 
+		//Check whether RasterElement creation was succesfull
 		if (pFrameCube.get() == NULL){
 			std::string msg = "A raster cube could not be created.";
 			pProgress->updateProgress(msg, 0, WARNING);
@@ -887,8 +885,10 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 			return false;
 		}
 
+		//Get RasterDataDescriptor of current frame
 		pFrameDesc = static_cast<RasterDataDescriptor*>(pFrameCube->getDataDescriptor());
 
+		//Set corner coordinates of the current frame RasterElement
 		it = pNewGcpList.begin();
 		it->mPixel = *(new LocationType(0, 0));
 		it->mCoordinate = *(new LocationType(frame2_corners[0].x, frame2_corners[0].y));
@@ -901,13 +901,15 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 		std::advance(it, 1);
 		it->mPixel = *(new LocationType(frame_size.width, 0));
 		it->mCoordinate = *(new LocationType(frame2_corners[3].x, frame2_corners[3].y));
-		
 		newGCPList = static_cast<GcpList*>(pModel->createElement("Corner coordinates","GcpList",pFrameCube.get()));
 		newGCPList->addPoints(pNewGcpList);
 
+		//Get GeoreferenceDescriptor of current frame RasterElement
 		pFrameGeoDesc = pFrameDesc->getGeoreferenceDescriptor();
+		//Set GeoreferencePlugin to be used
 		pFrameGeoDesc->setGeoreferencePlugInName("GCP Georeference");
 
+		//Georeference the frame using the Georeference Plugin
 		if (!plugInName.empty()){
 		ExecutableResource geoPlugIn(plugInName);
 		PlugInArgList& argList = geoPlugIn->getInArgList();
@@ -934,14 +936,15 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 			pProgress->updateProgress(message, 0, WARNING);
 			pStep->addMessage(message, "app", "44E8D3C8-64C3-44DC-AB65-43F433D69DC8");
 		}
-
+		
+		//Get DataAccessor of the current frame RasterElement
 		FactoryResource<DataRequest> pFrameRequest;
 		pFrameAcc = pFrameCube->getDataAccessor(pFrameRequest.release());
 
+		//Set frame RasterElement to top left pixel.
 		pFrameAcc->toPixel(0,0);
+		//Copy IplImage to RasterElement
 		for (unsigned int row = 0; row < pFrameDesc->getRowCount(); ++row){ 
-			//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
-			//pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
 			if (!pFrameAcc.isValid())
 			{
 				std::string msg = "Unable to access the cube data.";
@@ -958,10 +961,11 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 			}
 			pFrameAcc->nextRow();
 		}
-
+		//Add RasterElement and DataAccessor of current frame to vectors
 		rasters.push_back(pFrameCube);
 		accessors.push_back(pFrameAcc);
 
+		//Set previous frame corners for use by next frame
 		prev_frame_corners[0] = frame2_corners[0];
 		prev_frame_corners[1] = frame2_corners[1];
 		prev_frame_corners[2] = frame2_corners[2];
@@ -969,15 +973,15 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 
 		counter++;
 	}
-
-	//Drizzle images onto destination image.
 	double num_overlap_images;
-	//bool overlapped = false;
+
+	//Get dropsize from GUI
 	double drop = dropsize->text().toDouble();
+
 	//Reset destination image to top left pixel.
 	pDestAcc->toPixel(0,0);
+	//Drizzle images onto destination image.
 	for (unsigned int row = 0; row < pDestDesc->getRowCount(); ++row){ 
-		//pProgress->updateProgress("Calculating result (image " + std::to_string(static_cast<long long>(i+2)) + ")", (i+1)*100/(images.size()+1) + ((row * 100 / pDesc1->getRowCount()) / (images.size()+1)), NORMAL);
 		pProgress->updateProgress("Calculating result", row * 100 / pDestDesc->getRowCount(), NORMAL);
 		if (!pDestAcc.isValid())
 		{
@@ -989,24 +993,20 @@ bool DrizzleVideo_GUI::PerformDrizzle(){
 
 		for (unsigned int col = 0; col < pDestDesc->getColumnCount(); ++col)
 		{
-			//switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, accessors[0], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &overlapped);
 			num_overlap_images=0.0;
 			for (int i=0; i<rasters.size();i++){
-				//overlapped=false;
 				switchOnEncoding(pDestDesc->getDataType(), DrizzleVideo, pDestAcc->getColumn(), pDestAcc, accessors[i], row, col, pDestDesc->getRowCount(), pDestDesc->getColumnCount(), drop, &num_overlap_images);
-				//if(overlapped) num_overlap_images++;
 			}
-			//switchOnEncoding(pDestDesc->getDataType(), DivideVideo, pDestAcc->getColumn(), num_overlap_images);
 			pDestAcc->nextColumn();
 		}
 		pDestAcc->nextRow();
 	}
-	rasters[0].release();
+
+	//Release output RasterElement
 	pResultCube.release();
 
 	pStep->finalize();
 	pProgress->updateProgress("Done", 100, NORMAL);
 	this->accept();
-	this->finished(1);	
 	return true;
 }
