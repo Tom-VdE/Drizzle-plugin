@@ -1,6 +1,6 @@
 /********************************************//*
 * 
-* @file: Drizzle_GUI.h
+* @file: DrizzleVideo_GUI.h
 *
 * The information in this file is
 * Copyright(c) 2015 Tom Van den Eynde
@@ -10,8 +10,8 @@
 * http://www.gnu.org/licenses/lgpl.html
 ***********************************************/
 
-#ifndef Drizzle_GUI_H
-#define Drizzle_GUI_H
+#ifndef DrizzleVideo_GUI_H
+#define DrizzleVideo_GUI_H
 
 #include <Qt/qdialog.h>
 #include <Qt/qpushbutton.h>
@@ -21,27 +21,28 @@
 #include <Qt/qlineedit.h>
 #include <Qt/qlistwidget.h>
 
+
 /**
 *
-* The class of the Drizzle plugin which handles image input.
+* The class of the Drizzle plugin which handles video input.
 */
-class Drizzle_GUI : public QDialog
+class DrizzleVideo_GUI : public QDialog
 {
 	Q_OBJECT
 public:
 	/**
-	* Constructor for image input.
+	* Constructor for video input.
 	* Handles GUI, input, calculations and output.
 	*
 	* @param Parent QWidget as parent for construction of QDialog.
 	*/
-	Drizzle_GUI(QWidget* Parent);
+	DrizzleVideo_GUI(QWidget* Parent);
 
 	/**
-	* Destructor for image input.
+	* Destructor for video input.
 	* 
 	*/
-	~Drizzle_GUI();
+	~DrizzleVideo_GUI();
 
 public slots:
 	/**
@@ -59,47 +60,31 @@ public slots:
 	bool PerformDrizzle();
 
 	/**
-	* Slot to update the information of the first selected input image
-	* displayed on the image GUI.
+	* Slot to browse for an input video.
+	* Connected to 'Browse' button.
 	*/
-	void updateInfo1();
+	void browse();
 
 	/**
-	* Slot to update the information of the other selected input images
+	* Slot to update the information of the other selected video
 	* displayed on the image GUI.
 	*/
-	void updateInfo2();
-
+	void updateInfo();
 private:
 	/**
-	* QLabel for base image.
+	* QLabel for video.
 	*/
-	QLabel *Image1;
+	QLabel *Video;
 
 	/**
-	* QLabel for other images.
+	* QLabel for frame size of video.
 	*/
-	QLabel *Image2;
+	QLabel *Size;
 
 	/**
-	* QLabel for size of base image.
+	* QLabel for number of frames of video.
 	*/
-	QLabel *Size1;
-
-	/**
-	* QLabel for size of other images.
-	*/
-	QLabel *Size2;
-
-	/**
-	* QLabel for geographical coordinates of base image.
-	*/
-	QLabel *Geo1;
-
-	/**
-	* QLabel for geographical coordinates of other images.
-	*/
-	QLabel *Geo2;
+	QLabel *NumImages;
 
 	/**
 	* QPushButton to cancel plugin.
@@ -114,15 +99,15 @@ private:
 	QPushButton *Apply;
 
 	/**
-	* QComboBox to select base image.
+	* QPushButton to browse for video.
+	* Connects to Browse() SLOT.
 	*/
-	QComboBox *Rasterlist1;
+	QPushButton *Browse;
 
 	/**
-	* QListWidget containing open RasterElements with checkboxes
-	* to select multiple input images.
+	* QLineEdit to input directory.
 	*/
-	QListWidget *Rasterlist2;
+	QLineEdit *Dir;
 
 	/**
 	* QLabel for width of output image.
@@ -140,6 +125,10 @@ private:
 	QLabel *dropsize_text;
 
 	/**
+	* QLabel for number of frames.
+	*/
+	QLabel *num_images_text;
+	/**
 	* QLineEdit to input width of output image.
 	*/
 	QLineEdit *x_out;
@@ -155,14 +144,18 @@ private:
 	QLineEdit *dropsize;
 
 	/**
-	* vector containing all open RasterElements.
+	* QLineEdit to input the number of frames to Drizzle.
 	*/
-	std::vector<std::string> RasterElements;
-	
+	QLineEdit *num_images;
+
+	/**
+	* QString containing path to input video.
+	*/
+	QString fileName;
+
 	/**
 	* Initialisations needed for image GUI:
 	* Connects buttons to SLOTS.
-	* Get RasterElements and construct vector RasterElements.
 	* Set size of GUI
 	*/
 	void init();

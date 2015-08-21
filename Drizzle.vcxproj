@@ -94,7 +94,8 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(BuildDir)\Binaries-$(Platform)-$(Configuration)\PlugIns\</OutDir>
-    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Qt\5.4\msvc2010_opengl\include;</IncludePath>
+    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Qt\5.4\msvc2010_opengl\include;C:\OpenCV\opencv\build\include;C:\OpenCV\opencv\build\include\opencv;C:\OpenCV\opencv\build\include\opencv2</IncludePath>
+    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\OpenCV\opencv\build\x64\vc10\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
@@ -148,14 +149,22 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(LibraryDir)\Binaries-$(Platform)-$(Configuration)\Lib;C:\Qt\5.4\msvc2010_opengl\lib\Qt5Core.lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(LibraryDir)\Binaries-$(Platform)-$(Configuration)\Lib;C:\Qt\5.4\msvc2010_opengl\lib\Qt5Core.lib;C:\OpenCV\opencv\build\x64\vc10\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d2411.lib;opencv_contrib2411.lib;opencv_core2411.lib;opencv_features2d2411.lib;opencv_flann2411.lib;opencv_gpu2411.lib;opencv_highgui2411.lib;opencv_imgproc2411.lib;opencv_legacy2411.lib;opencv_ml2411.lib;opencv_nonfree2411.lib;opencv_objdetect2411.lib;opencv_ocl2411.lib;opencv_photo2411.lib;opencv_stitching2411.lib;opencv_superres2411.lib;opencv_ts2411.lib;opencv_video2411.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(OPTICKSDEPENDENCIESINCLUDE)\qt4;%(AdditionalIncludeDirectories);C:\OpenCV\opencv\build\include\opencv;C:\OpenCV\opencv\build\include\opencv2</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>APPLICATION_XERCES;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_Drizzle.cpp" />
+    <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_DrizzleVideo_GUI.cpp" />
     <ClCompile Include="..\..\..\..\Build\Moc\Drizzle\moc_Drizzle_GUI.cpp" />
     <ClCompile Include="Drizzle.cpp" />
+    <ClCompile Include="DrizzleVideo_GUI.cpp" />
     <ClCompile Include="Drizzle_GUI.cpp" />
+    <ClCompile Include="drizzle_helper_functions.cpp" />
     <ClCompile Include="ModuleManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -179,6 +188,14 @@
       <Project>{4831b6df-aeac-4f12-a0b5-ce3ca703fb88}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="DrizzleVideo_GUI.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTBIN)\moc.exe" "%(FullPath)" -o "$(BuildDir)\Moc\$(ProjectName)\moc_%(Filename).cpp"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Moc%27ing %(Filename).h...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(BuildDir)\Moc\$(ProjectName)\moc_%(Filename).cpp;%(Outputs)</Outputs>
+    </CustomBuild>
+    <ClInclude Include="drizzle_helper_functions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
